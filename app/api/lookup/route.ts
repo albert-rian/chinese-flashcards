@@ -11,17 +11,19 @@ export async function GET(request: NextRequest) {
   // Get pinyin using pinyin-pro
   const pinyinResult = pinyin(hanzi, { toneType: 'symbol', separator: ' ' })
 
+  async function googleTranslate(text: string, target: string): Promise<string> {
+    const res = await fetch(
+      `https://translate.googleapis.com/translate_a/single?client=gtx&sl=zh-CN&tl=${target}&dt=t&q=${encodeURIComponent(text)}`
+    )
+    const data = await res.json()
+    return data?.[0]?.[0]?.[0] || ''
+  }
+
   // Fetch English and Indonesian translations in parallel
-  const [englishRes, indonesianRes] = await Promise.all([
-    fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(hanzi)}&langpair=zh|en`),
-    fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(hanzi)}&langpair=zh|id`),
+  const [english, indonesian] = await Promise.all([
+    googleTranslate(hanzi, 'en'),
+    googleTranslate(hanzi, 'id'),
   ])
-
-  const englishData = await englishRes.json()
-  const indonesianData = await indonesianRes.json()
-
-  const english = englishData?.responseData?.translatedText || 'Translation unavailable'
-  const indonesian = indonesianData?.responseData?.translatedText || 'Terjemahan tidak tersedia'
 
   return NextResponse.json({
     hanzi,
