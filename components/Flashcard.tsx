@@ -200,17 +200,18 @@ export default function Flashcard({ refreshKey }: { refreshKey: number }) {
           style={getCardStyle()}
           onClick={() => { if (Math.abs(dragX) < 5) setFlipped(f => !f) }}
         >
-          <div style={{ perspective: '1000px', height: '100%' }}>
+          <div style={{ perspective: '1000px', WebkitPerspective: '1000px', height: '100%' }}>
             <div style={{
               transition: 'transform 0.5s',
               transformStyle: 'preserve-3d',
+              WebkitTransformStyle: 'preserve-3d',
               transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
               position: 'relative',
               height: '100%',
             }}>
               {/* Front */}
               <div
-                style={{ backfaceVisibility: 'hidden' }}
+                style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
                 className="absolute inset-0 bg-white border border-gray-200 rounded-3xl shadow-md flex flex-col items-center justify-center overflow-hidden"
               >
                 {isDragging && dragX !== 0 && (
@@ -222,7 +223,7 @@ export default function Flashcard({ refreshKey }: { refreshKey: number }) {
 
               {/* Back */}
               <div
-                style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
+                style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden', transform: 'rotateY(180deg)', WebkitTransform: 'rotateY(180deg)' }}
                 className="absolute inset-0 bg-red-50 border border-red-100 rounded-3xl shadow-md flex flex-col items-center justify-center gap-3 px-6 overflow-hidden"
               >
                 {isDragging && dragX !== 0 && (
