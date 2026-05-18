@@ -18,6 +18,7 @@ export default function Flashcard({ refreshKey }: { refreshKey: number }) {
   const [rememberedSet, setRememberedSet] = useState(new Set<string>())
   const [relearnSet, setRelearnSet] = useState(new Set<string>())
   const [flipped, setFlipped] = useState(false)
+  const [fading, setFading] = useState(false)
   const [loading, setLoading] = useState(true)
   const [completed, setCompleted] = useState(false)
   const [exiting, setExiting] = useState<'left' | 'right' | null>(null)
@@ -42,7 +43,6 @@ export default function Flashcard({ refreshKey }: { refreshKey: number }) {
     fetchCharacters()
   }, [refreshKey])
 
-  // Reset after completion
   useEffect(() => {
     if (!completed) return
     const t = setTimeout(() => {
@@ -55,11 +55,19 @@ export default function Flashcard({ refreshKey }: { refreshKey: number }) {
     return () => clearTimeout(t)
   }, [completed, allCards])
 
+  function handleFlip() {
+    if (fading) return
+    setFading(true)
+    setTimeout(() => {
+      setFlipped(f => !f)
+      setFading(false)
+    }, 150)
+  }
+
   function doSwipe(dir: 'left' | 'right') {
     if (!deck.length || exiting) return
     const card = deck[0]
     setExiting(dir)
-
     setTimeout(() => {
       if (dir === 'right') {
         setRememberedSet(prev => new Set([...prev, card.hanzi]))
@@ -196,48 +204,40 @@ export default function Flashcard({ refreshKey }: { refreshKey: number }) {
 
         {/* Card */}
         <div
-          className="absolute inset-0 cursor-grab active:cursor-grabbing"
+          className="absolute inset-0 cursor-pointer"
           style={getCardStyle()}
-          onClick={() => { if (Math.abs(dragX) < 5) setFlipped(f => !f) }}
+          onClick={() => { if (Math.abs(dragX) < 5) handleFlip() }}
         >
-          <div style={{ perspective: '1000px', WebkitPerspective: '1000px', height: '100%' }}>
-            <div style={{
-              transition: 'transform 0.5s',
-              transformStyle: 'preserve-3d',
-              WebkitTransformStyle: 'preserve-3d',
-              transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
-              position: 'relative',
-              height: '100%',
-            }}>
-              {/* Front */}
-              <div
-                style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
-                className="absolute inset-0 bg-white border border-gray-200 rounded-3xl shadow-md flex flex-col items-center justify-center overflow-hidden"
-              >
-                {isDragging && dragX !== 0 && (
-                  <div className="absolute inset-0 rounded-3xl pointer-events-none" style={{ backgroundColor: overlayColor }} />
-                )}
-                <p className="text-8xl font-bold text-gray-900 relative z-10">{card.hanzi}</p>
-                <p className="text-gray-400 text-sm mt-4 relative z-10">Tap to reveal · Swipe to judge</p>
-              </div>
+          {/* Color overlay when dragging */}
+          {isDragging && dragX !== 0 && (
+            <div className="absolute inset-0 rounded-3xl z-10 pointer-events-none" style={{ backgroundColor: overlayColor }} />
+          )}
 
-              {/* Back */}
-              <div
-                style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden', transform: 'rotateY(180deg)', WebkitTransform: 'rotateY(180deg)' }}
-                className="absolute inset-0 bg-red-50 border border-red-100 rounded-3xl shadow-md flex flex-col items-center justify-center gap-3 px-6 overflow-hidden"
-              >
-                {isDragging && dragX !== 0 && (
-                  <div className="absolute inset-0 rounded-3xl pointer-events-none" style={{ backgroundColor: overlayColor }} />
-                )}
-                <p className="text-5xl font-bold text-red-600 relative z-10">{card.hanzi}</p>
-                <p className="text-xl text-gray-700 font-medium relative z-10">{card.pinyin}</p>
-                <div className="w-full border-t border-red-100 pt-3 space-y-1 text-center relative z-10">
-                  <p className="text-gray-800">{card.english}</p>
-                  <p className="text-gray-500 text-sm">{card.indonesian}</p>
-                </div>
+          {/* Front */}
+          {!flipped && (
+            <div
+              className="absolute inset-0 bg-white border border-gray-200 rounded-3xl shadow-md flex flex-col items-center justify-center"
+              style={{ opacity: fading ? 0 : 1, transition: 'opacity 0.15s ease' }}
+            >
+              <p className="text-8xl font-bold text-gray-900">{card.hanzi}</p>
+              <p className="text-gray-400 text-sm mt-4">Tap to reveal · Swipe to judge</p>
+            </div>
+          )}
+
+          {/* Back */}
+          {flipped && (
+            <div
+              className="absolute inset-0 bg-red-50 border border-red-100 rounded-3xl shadow-md flex flex-col items-center justify-center gap-3 px-6"
+              style={{ opacity: fading ? 0 : 1, transition: 'opacity 0.15s ease' }}
+            >
+              <p className="text-5xl font-bold text-red-600">{card.hanzi}</p>
+              <p className="text-xl text-gray-700 font-medium">{card.pinyin}</p>
+              <div className="w-full border-t border-red-100 pt-3 space-y-1 text-center">
+                <p className="text-gray-800">{card.english}</p>
+                <p className="text-gray-500 text-sm">{card.indonesian}</p>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
