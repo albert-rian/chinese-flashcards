@@ -162,7 +162,8 @@ export default function Library({ refreshKey }: { refreshKey: number }) {
 
             {/* Table */}
             {isOpen && group.characters.length > 0 && (
-              <table className="w-full">
+              <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <table style={{ width: '100%', minWidth: '480px' }}>
                 <thead>
                   <tr style={{ background: '#F0FFF0', borderBottom: '2px solid var(--duo-border)' }}>
                     {[
@@ -212,6 +213,7 @@ export default function Library({ refreshKey }: { refreshKey: number }) {
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
 
             {isOpen && group.characters.length === 0 && (
