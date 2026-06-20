@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { useState, useEffect } from 'react'
+import { supabase, Lesson } from '@/lib/supabase'
 
 type LookupResult = {
   hanzi: string
@@ -11,12 +11,75 @@ type LookupResult = {
 }
 
 export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
+  const [lessons, setLessons] = useState<Lesson[]>([])
+  const [selectedLessonId, setSelectedLessonId] = useState('')
+  const [showNewLesson, setShowNewLesson] = useState(false)
+  const [newLessonName, setNewLessonName] = useState('')
+  const [creatingLesson, setCreatingLesson] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteCount, setDeleteCount] = useState(0)
+  const [deletingLesson, setDeletingLesson] = useState(false)
+
   const [input, setInput] = useState('')
   const [result, setResult] = useState<LookupResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
+
+  useEffect(() => {
+    fetchLessons()
+  }, [])
+
+  async function fetchLessons() {
+    const { data } = await supabase.from('lessons').select('*')
+    const sorted = sortLessons(data || [])
+    setLessons(sorted)
+  }
+
+  function sortLessons(list: Lesson[]) {
+    return [...list].sort((a, b) => {
+      const na = parseFloat(a.name.match(/[\d.]+/)?.[0] ?? '999')
+      const nb = parseFloat(b.name.match(/[\d.]+/)?.[0] ?? '999')
+      return na !== nb ? na - nb : a.name.localeCompare(b.name)
+    })
+  }
+
+  async function handleCreateLesson() {
+    if (!newLessonName.trim()) return
+    setCreatingLesson(true)
+    const { data, error: err } = await supabase
+      .from('lessons')
+      .insert({ name: newLessonName.trim() })
+      .select()
+      .single()
+    setCreatingLesson(false)
+    if (err) { setError('Could not create lesson: ' + err.message); return }
+    const updated = sortLessons([...lessons, data])
+    setLessons(updated)
+    setSelectedLessonId(data.id)
+    setNewLessonName('')
+    setShowNewLesson(false)
+  }
+
+  async function openDeleteConfirm() {
+    const { count } = await supabase
+      .from('characters')
+      .select('*', { count: 'exact', head: true })
+      .eq('lesson_id', selectedLessonId)
+    setDeleteCount(count ?? 0)
+    setShowDeleteConfirm(true)
+  }
+
+  async function handleDeleteLesson() {
+    setDeletingLesson(true)
+    await supabase.from('lessons').delete().eq('id', selectedLessonId)
+    setLessons(prev => prev.filter(l => l.id !== selectedLessonId))
+    setSelectedLessonId('')
+    setShowDeleteConfirm(false)
+    setDeletingLesson(false)
+    onSaved()
+  }
 
   async function handleLookup() {
     if (!input.trim()) return
@@ -37,7 +100,7 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
   }
 
   async function handleSave() {
-    if (!result) return
+    if (!result || !selectedLessonId) return
     setSaving(true)
     setError('')
     const { error: dbError } = await supabase.from('characters').upsert({
@@ -45,56 +108,232 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
       pinyin: result.pinyin,
       english: result.english,
       indonesian: result.indonesian,
-    })
+      lesson_id: selectedLessonId,
+    }, { onConflict: 'hanzi,lesson_id' })
     setSaving(false)
     if (dbError) {
       setError('Failed to save: ' + dbError.message)
     } else {
-      setSuccessMsg(`"${result.hanzi}" saved to your library!`)
+      setSuccessMsg(`"${result.hanzi}" saved to library!`)
       setInput('')
       setResult(null)
       onSaved()
     }
   }
 
+  const selectedLesson = lessons.find(l => l.id === selectedLessonId)
+
   return (
     <div className="max-w-md mx-auto px-4 py-6 space-y-5">
-      {/* Title */}
-      <div>
-        <h2 className="text-2xl font-black" style={{ color: 'var(--duo-text)' }}>Add a Character</h2>
-        <p className="text-sm font-semibold mt-1" style={{ color: 'var(--duo-text-light)' }}>
-          Type any Hanzi — we'll find the rest!
-        </p>
+
+      {/* ── Lesson Manager ── */}
+      <div className="duo-card p-4 space-y-3">
+        <h2 className="text-base font-black uppercase tracking-wider" style={{ color: 'var(--duo-text-light)' }}>
+          Lesson
+        </h2>
+
+        {/* Dropdown row */}
+        <div className="flex gap-2">
+          <select
+            value={selectedLessonId}
+            onChange={e => setSelectedLessonId(e.target.value)}
+            style={{
+              flex: 1,
+              background: 'white',
+              border: '2.5px solid var(--duo-border)',
+              borderBottom: '4px solid var(--duo-border)',
+              borderRadius: '14px',
+              padding: '0.6rem 0.75rem',
+              fontFamily: 'inherit',
+              fontWeight: 700,
+              fontSize: '0.9rem',
+              color: selectedLessonId ? 'var(--duo-text)' : 'var(--duo-text-light)',
+              outline: 'none',
+            }}
+          >
+            <option value="">Select a lesson…</option>
+            {lessons.map(l => (
+              <option key={l.id} value={l.id}>{l.name}</option>
+            ))}
+          </select>
+
+          {selectedLessonId && (
+            <button
+              onClick={openDeleteConfirm}
+              title="Delete this lesson"
+              style={{
+                background: 'white',
+                border: '2.5px solid var(--duo-border)',
+                borderBottom: '4px solid var(--duo-border)',
+                borderRadius: '14px',
+                padding: '0.6rem 0.85rem',
+                fontSize: '1.1rem',
+                cursor: 'pointer',
+              }}
+            >
+              🗑️
+            </button>
+          )}
+        </div>
+
+        {/* New lesson toggle */}
+        {!showNewLesson ? (
+          <button
+            onClick={() => setShowNewLesson(true)}
+            className="btn-duo-outline-green"
+            style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
+          >
+            + New Lesson
+          </button>
+        ) : (
+          <div className="flex gap-2">
+            <input
+              autoFocus
+              type="text"
+              value={newLessonName}
+              onChange={e => setNewLessonName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleCreateLesson()}
+              placeholder="e.g. Lesson 14 – Travel"
+              style={{
+                flex: 1,
+                background: 'white',
+                border: '2.5px solid var(--duo-border)',
+                borderBottom: '4px solid var(--duo-border)',
+                borderRadius: '12px',
+                padding: '0.55rem 0.75rem',
+                fontFamily: 'inherit',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                color: 'var(--duo-text)',
+                outline: 'none',
+              }}
+            />
+            <button
+              onClick={handleCreateLesson}
+              disabled={creatingLesson || !newLessonName.trim()}
+              className="btn-duo-green"
+              style={{ fontSize: '0.85rem', padding: '0.55rem 0.9rem', width: 'auto' }}
+            >
+              {creatingLesson ? '…' : 'Create'}
+            </button>
+            <button
+              onClick={() => { setShowNewLesson(false); setNewLessonName('') }}
+              style={{
+                background: 'white',
+                border: '2.5px solid var(--duo-border)',
+                borderBottom: '4px solid var(--duo-border)',
+                borderRadius: '12px',
+                padding: '0.55rem 0.75rem',
+                fontFamily: 'inherit',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                color: 'var(--duo-text-light)',
+                cursor: 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Input row */}
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleLookup()}
-          placeholder="e.g. 你"
-          className="flex-1 text-3xl text-center outline-none"
+      {/* ── Delete Confirmation Modal ── */}
+      {showDeleteConfirm && (
+        <div
           style={{
-            background: 'white',
-            border: '2.5px solid var(--duo-border)',
-            borderBottom: '4px solid var(--duo-border)',
-            borderRadius: '16px',
-            padding: '0.75rem',
-            fontFamily: 'inherit',
-            fontWeight: 800,
-            color: 'var(--duo-text)',
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 50,
+            padding: '1rem',
           }}
-        />
-        <button
-          onClick={handleLookup}
-          disabled={loading || !input.trim()}
-          className="btn-duo-green"
-          style={{ width: 'auto', padding: '0.75rem 1.25rem', fontSize: '0.95rem' }}
         >
-          {loading ? '...' : '🔍 Look Up'}
-        </button>
+          <div
+            className="duo-card p-6 space-y-4"
+            style={{ maxWidth: '320px', width: '100%' }}
+          >
+            <p className="text-xl font-black" style={{ color: 'var(--duo-text)' }}>Delete lesson?</p>
+            <p className="font-semibold text-sm" style={{ color: 'var(--duo-text-light)' }}>
+              <span style={{ fontWeight: 800, color: 'var(--duo-text)' }}>"{selectedLesson?.name}"</span> will be deleted
+              along with <span style={{ fontWeight: 800, color: 'var(--duo-red)' }}>{deleteCount} hanzi</span>.
+              This cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                style={{
+                  flex: 1,
+                  background: 'white',
+                  border: '2.5px solid var(--duo-border)',
+                  borderBottom: '4px solid var(--duo-border)',
+                  borderRadius: '14px',
+                  padding: '0.65rem',
+                  fontFamily: 'inherit',
+                  fontWeight: 800,
+                  fontSize: '0.95rem',
+                  color: 'var(--duo-text-light)',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteLesson}
+                disabled={deletingLesson}
+                className="btn-duo-red"
+                style={{ flex: 1, width: 'auto' }}
+              >
+                {deletingLesson ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Add Character Form ── */}
+      <div>
+        <div className="mb-4">
+          <h2 className="text-2xl font-black" style={{ color: 'var(--duo-text)' }}>Add a Character</h2>
+          <p className="text-sm font-semibold mt-1" style={{ color: 'var(--duo-text-light)' }}>
+            {selectedLessonId
+              ? `Adding to "${selectedLesson?.name}"`
+              : 'Select a lesson above first'}
+          </p>
+        </div>
+
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleLookup()}
+            placeholder="e.g. 你"
+            disabled={!selectedLessonId}
+            className="flex-1 text-3xl text-center outline-none"
+            style={{
+              background: selectedLessonId ? 'white' : '#F8F8F8',
+              border: '2.5px solid var(--duo-border)',
+              borderBottom: '4px solid var(--duo-border)',
+              borderRadius: '16px',
+              padding: '0.75rem',
+              fontFamily: 'inherit',
+              fontWeight: 800,
+              color: 'var(--duo-text)',
+              opacity: selectedLessonId ? 1 : 0.5,
+            }}
+          />
+          <button
+            onClick={handleLookup}
+            disabled={loading || !input.trim() || !selectedLessonId}
+            className="btn-duo-green"
+            style={{ width: 'auto', padding: '0.75rem 1.25rem', fontSize: '0.95rem' }}
+          >
+            {loading ? '…' : '🔍 Look Up'}
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -111,12 +350,9 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
 
       {result && (
         <div className="duo-card p-5 space-y-4">
-          {/* Big hanzi */}
           <div className="text-center py-2">
             <p className="font-black" style={{ fontSize: '5rem', color: 'var(--duo-text)', lineHeight: 1 }}>{result.hanzi}</p>
           </div>
-
-          {/* Details */}
           <div className="space-y-2">
             {[
               { label: 'Pinyin', value: result.pinyin, color: 'var(--duo-blue)' },
@@ -129,9 +365,8 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
               </div>
             ))}
           </div>
-
           <button onClick={handleSave} disabled={saving} className="btn-duo-green">
-            {saving ? 'Saving...' : '💾 Save to Library'}
+            {saving ? 'Saving…' : '💾 Save to Library'}
           </button>
         </div>
       )}

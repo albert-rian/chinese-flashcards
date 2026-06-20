@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { supabase, Character } from '@/lib/supabase'
+import { supabase, Lesson, Character } from '@/lib/supabase'
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
@@ -13,6 +13,8 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 export default function Flashcard({ refreshKey }: { refreshKey: number }) {
+  const [lessons, setLessons] = useState<Lesson[]>([])
+  const [selectedLessonId, setSelectedLessonId] = useState('')
   const [allCards, setAllCards] = useState<Character[]>([])
   const [deck, setDeck] = useState<Character[]>([])
   const [rememberedSet, setRememberedSet] = useState(new Set<string>())
@@ -27,22 +29,58 @@ export default function Flashcard({ refreshKey }: { refreshKey: number }) {
   const startXRef = useRef(0)
   const isDraggingRef = useRef(false)
 
+  // Load lessons on mount
   useEffect(() => {
-    async function fetchCharacters() {
-      setLoading(true)
-      const { data } = await supabase.from('characters').select('*').order('created_at', { ascending: true })
-      const cards = data || []
-      setAllCards(cards)
-      setDeck(shuffle(cards))
-      setRememberedSet(new Set())
-      setRelearnSet(new Set())
-      setFlipped(false)
-      setCompleted(false)
-      setLoading(false)
+    async function fetchLessons() {
+      const { data } = await supabase.from('lessons').select('*')
+      const sorted = sortLessons(data || [])
+      setLessons(sorted)
+      if (sorted.length > 0) {
+        setSelectedLessonId(sorted[0].id)
+      } else {
+        setLoading(false)
+      }
     }
-    fetchCharacters()
+    fetchLessons()
   }, [refreshKey])
 
+  // Load cards when lesson changes
+  useEffect(() => {
+    if (!selectedLessonId) return
+    loadCards(selectedLessonId)
+  }, [selectedLessonId])
+
+  async function loadCards(lessonId: string) {
+    setLoading(true)
+    const { data } = await supabase
+      .from('characters')
+      .select('*')
+      .eq('lesson_id', lessonId)
+      .order('created_at', { ascending: true })
+    const cards = data || []
+    setAllCards(cards)
+    setDeck(shuffle(cards))
+    setRememberedSet(new Set())
+    setRelearnSet(new Set())
+    setFlipped(false)
+    setCompleted(false)
+    setLoading(false)
+  }
+
+  function sortLessons(list: Lesson[]) {
+    return [...list].sort((a, b) => {
+      const na = parseFloat(a.name.match(/[\d.]+/)?.[0] ?? '999')
+      const nb = parseFloat(b.name.match(/[\d.]+/)?.[0] ?? '999')
+      return na !== nb ? na - nb : a.name.localeCompare(b.name)
+    })
+  }
+
+  function handleLessonChange(lessonId: string) {
+    if (lessonId === selectedLessonId) return
+    setSelectedLessonId(lessonId)
+  }
+
+  // Auto-reset after completion
   useEffect(() => {
     if (!completed) return
     const t = setTimeout(() => {
@@ -70,15 +108,15 @@ export default function Flashcard({ refreshKey }: { refreshKey: number }) {
     setExiting(dir)
     setTimeout(() => {
       if (dir === 'right') {
-        setRememberedSet(prev => new Set([...prev, card.hanzi]))
-        setRelearnSet(prev => { const n = new Set(prev); n.delete(card.hanzi); return n })
+        setRememberedSet(prev => new Set([...prev, card.id]))
+        setRelearnSet(prev => { const n = new Set(prev); n.delete(card.id); return n })
         setDeck(prev => {
           const next = prev.slice(1)
           if (next.length === 0) setCompleted(true)
           return next
         })
       } else {
-        setRelearnSet(prev => new Set([...prev, card.hanzi]))
+        setRelearnSet(prev => new Set([...prev, card.id]))
         setDeck(prev => [...prev.slice(1), card])
       }
       setFlipped(false)
@@ -119,25 +157,42 @@ export default function Flashcard({ refreshKey }: { refreshKey: number }) {
   const overlayColor = dragX > 0 ? `rgba(34,197,94,${overlayOpacity})` : `rgba(239,68,68,${overlayOpacity})`
 
   if (loading) return (
-    <div className="flex items-center justify-center h-64 font-black" style={{ color: 'var(--duo-text-light)' }}>Loading...</div>
+    <div className="flex items-center justify-center h-64 font-black" style={{ color: 'var(--duo-text-light)' }}>Loading…</div>
   )
 
-  if (allCards.length === 0) {
+  if (lessons.length === 0) {
     return (
       <div className="max-w-md mx-auto px-4 py-16 text-center space-y-3">
         <p className="text-6xl">📖</p>
-        <p className="text-xl font-black" style={{ color: 'var(--duo-text)' }}>No characters yet</p>
-        <p className="font-semibold" style={{ color: 'var(--duo-text-light)' }}>Go to the + tab and save your first one.</p>
+        <p className="text-xl font-black" style={{ color: 'var(--duo-text)' }}>No lessons yet</p>
+        <p className="font-semibold" style={{ color: 'var(--duo-text-light)' }}>Go to the + tab and create a lesson first.</p>
       </div>
     )
   }
 
   if (completed) {
     return (
-      <div className="max-w-md mx-auto px-4 py-16 text-center space-y-4">
-        <p className="text-7xl">🎉</p>
-        <p className="text-2xl font-black" style={{ color: 'var(--duo-green)' }}>You remembered them all!</p>
-        <p className="font-bold" style={{ color: 'var(--duo-text-light)' }}>Reshuffling in a moment...</p>
+      <div className="max-w-md mx-auto px-4 space-y-4">
+        {/* Lesson selector even on completion screen */}
+        <LessonSelector lessons={lessons} selectedId={selectedLessonId} onChange={handleLessonChange} />
+        <div className="py-12 text-center space-y-4">
+          <p className="text-7xl">🎉</p>
+          <p className="text-2xl font-black" style={{ color: 'var(--duo-green)' }}>You remembered them all!</p>
+          <p className="font-bold" style={{ color: 'var(--duo-text-light)' }}>Reshuffling in a moment…</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (allCards.length === 0) {
+    return (
+      <div className="max-w-md mx-auto px-4 space-y-4">
+        <LessonSelector lessons={lessons} selectedId={selectedLessonId} onChange={handleLessonChange} />
+        <div className="py-12 text-center space-y-3">
+          <p className="text-6xl">📖</p>
+          <p className="text-xl font-black" style={{ color: 'var(--duo-text)' }}>No cards in this lesson</p>
+          <p className="font-semibold" style={{ color: 'var(--duo-text-light)' }}>Add characters from the + tab.</p>
+        </div>
       </div>
     )
   }
@@ -149,6 +204,9 @@ export default function Flashcard({ refreshKey }: { refreshKey: number }) {
 
   return (
     <div className="max-w-md mx-auto px-4 py-4 space-y-4 select-none">
+
+      {/* Lesson selector */}
+      <LessonSelector lessons={lessons} selectedId={selectedLessonId} onChange={handleLessonChange} />
 
       {/* Tracker */}
       <div className="grid grid-cols-2 gap-3">
@@ -235,7 +293,6 @@ export default function Flashcard({ refreshKey }: { refreshKey: number }) {
           style={getCardStyle()}
           onClick={() => { if (Math.abs(dragX) < 5) handleFlip() }}
         >
-          {/* Color overlay when dragging */}
           {isDragging && dragX !== 0 && (
             <div className="absolute inset-0 z-10 pointer-events-none" style={{ backgroundColor: overlayColor, borderRadius: '20px' }} />
           )}
@@ -281,13 +338,40 @@ export default function Flashcard({ refreshKey }: { refreshKey: number }) {
 
       {/* Buttons */}
       <div className="flex gap-3">
-        <button onClick={() => doSwipe('left')} className="btn-duo-outline-red flex-1">
-          ✗ Relearn
-        </button>
-        <button onClick={() => doSwipe('right')} className="btn-duo-outline-green flex-1">
-          ✓ Know it
-        </button>
+        <button onClick={() => doSwipe('left')} className="btn-duo-outline-red flex-1">✗ Relearn</button>
+        <button onClick={() => doSwipe('right')} className="btn-duo-outline-green flex-1">✓ Know it</button>
       </div>
     </div>
+  )
+}
+
+function LessonSelector({ lessons, selectedId, onChange }: {
+  lessons: Lesson[]
+  selectedId: string
+  onChange: (id: string) => void
+}) {
+  return (
+    <select
+      value={selectedId}
+      onChange={e => onChange(e.target.value)}
+      style={{
+        width: '100%',
+        background: 'white',
+        border: '2.5px solid var(--duo-border)',
+        borderBottom: '4px solid var(--duo-border)',
+        borderRadius: '16px',
+        padding: '0.75rem 1rem',
+        fontFamily: 'inherit',
+        fontWeight: 800,
+        fontSize: '1rem',
+        color: 'var(--duo-text)',
+        outline: 'none',
+        cursor: 'pointer',
+      }}
+    >
+      {lessons.map(l => (
+        <option key={l.id} value={l.id}>{l.name}</option>
+      ))}
+    </select>
   )
 }
