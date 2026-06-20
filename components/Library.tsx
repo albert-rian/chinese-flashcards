@@ -165,8 +165,14 @@ export default function Library({ refreshKey }: { refreshKey: number }) {
               <table className="w-full">
                 <thead>
                   <tr style={{ background: '#F0FFF0', borderBottom: '2px solid var(--duo-border)' }}>
-                    {['Hanzi', 'Pinyin', 'English', 'Indonesian', ''].map(h => (
-                      <th key={h} className="text-left px-3 py-2 text-xs font-black uppercase tracking-wider" style={{ color: 'var(--duo-green-dark)' }}>{h}</th>
+                    {[
+                      { label: 'Hanzi', nowrap: true },
+                      { label: 'Pinyin', nowrap: true },
+                      { label: 'English', nowrap: false },
+                      { label: 'Indonesian', nowrap: false },
+                      { label: '', nowrap: true },
+                    ].map(h => (
+                      <th key={h.label} className="text-left px-3 py-2 text-xs font-black uppercase tracking-wider" style={{ color: 'var(--duo-green-dark)', whiteSpace: h.nowrap ? 'nowrap' : 'normal' }}>{h.label}</th>
                     ))}
                   </tr>
                 </thead>
@@ -179,8 +185,8 @@ export default function Library({ refreshKey }: { refreshKey: number }) {
                         borderBottom: '1.5px solid var(--duo-border)',
                       }}
                     >
-                      <td className="px-3 py-2 text-2xl font-black" style={{ color: 'var(--duo-text)' }}>{char.hanzi}</td>
-                      <td className="px-3 py-2 text-sm font-bold" style={{ color: 'var(--duo-blue)' }}>{char.pinyin}</td>
+                      <td className="px-3 py-2 text-2xl font-black" style={{ color: 'var(--duo-text)', whiteSpace: 'nowrap', width: '1%' }}>{char.hanzi}</td>
+                      <td className="px-3 py-2 text-sm font-bold" style={{ color: 'var(--duo-blue)', whiteSpace: 'nowrap', width: '1%' }}>{char.pinyin}</td>
                       <td className="px-3 py-2 text-sm font-semibold" style={{ color: 'var(--duo-text)' }}>{char.english}</td>
                       <td className="px-3 py-2 text-sm font-semibold" style={{ color: 'var(--duo-text-light)' }}>{char.indonesian}</td>
                       <td className="px-2 py-2 text-right">

@@ -214,15 +214,17 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleLookup()}
-            placeholder="e.g. 你"
+            placeholder="你"
             disabled={!selectedLessonId}
-            className="flex-1 text-3xl text-center outline-none"
+            className="text-3xl text-center outline-none"
             style={{
+              flex: '1 1 0',
+              minWidth: 0,
               background: selectedLessonId ? 'white' : '#F8F8F8',
               border: '2.5px solid var(--duo-border)',
               borderBottom: '4px solid var(--duo-border)',
               borderRadius: '16px',
-              padding: '0.75rem',
+              padding: '0.75rem 0.5rem',
               fontFamily: 'inherit',
               fontWeight: 800,
               color: 'var(--duo-text)',
@@ -233,7 +235,7 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
             onClick={handleLookup}
             disabled={loading || !input.trim() || !selectedLessonId}
             className="btn-duo-green"
-            style={{ width: 'auto', padding: '0.75rem 1.25rem', fontSize: '0.95rem' }}
+            style={{ width: 'auto', padding: '0.75rem 1rem', fontSize: '0.9rem', flexShrink: 0 }}
           >
             {loading ? '…' : '🔍 Look Up'}
           </button>
