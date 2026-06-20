@@ -10,10 +10,7 @@ export default function Library({ refreshKey }: { refreshKey: number }) {
   useEffect(() => {
     async function fetchCharacters() {
       setLoading(true)
-      const { data } = await supabase
-        .from('characters')
-        .select('*')
-        .order('created_at', { ascending: true })
+      const { data } = await supabase.from('characters').select('*').order('created_at', { ascending: true })
       setCharacters(data || [])
       setLoading(false)
     }
@@ -21,46 +18,50 @@ export default function Library({ refreshKey }: { refreshKey: number }) {
   }, [refreshKey])
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64 text-gray-400">
-        Loading...
-      </div>
-    )
+    return <div className="flex items-center justify-center h-64 font-bold" style={{ color: 'var(--duo-text-light)' }}>Loading...</div>
   }
 
   if (characters.length === 0) {
     return (
-      <div className="max-w-md mx-auto px-4 py-12 text-center space-y-3">
-        <p className="text-5xl">📚</p>
-        <p className="text-gray-600 font-medium">No characters yet</p>
-        <p className="text-gray-400 text-sm">Add your first character using the + tab.</p>
+      <div className="max-w-md mx-auto px-4 py-16 text-center space-y-3">
+        <p className="text-6xl">📚</p>
+        <p className="text-xl font-black" style={{ color: 'var(--duo-text)' }}>No characters yet</p>
+        <p className="font-semibold" style={{ color: 'var(--duo-text-light)' }}>Add your first character using the + tab.</p>
       </div>
     )
   }
 
   return (
-    <div className="px-4 py-4">
-      <p className="text-sm text-gray-400 mb-3">{characters.length} characters saved</p>
-      <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
-        <table className="w-full text-sm">
+    <div className="px-4 py-5">
+      {/* Count badge */}
+      <div className="flex items-center gap-2 mb-4">
+        <span className="font-black text-2xl" style={{ color: 'var(--duo-text)' }}>{characters.length}</span>
+        <span className="font-bold text-sm" style={{ color: 'var(--duo-text-light)' }}>characters saved</span>
+      </div>
+
+      {/* Table */}
+      <div className="duo-card overflow-hidden">
+        <table className="w-full">
           <thead>
-            <tr className="border-b border-gray-100 bg-gray-50">
-              <th className="text-left px-4 py-3 text-gray-500 font-medium">Hanzi</th>
-              <th className="text-left px-4 py-3 text-gray-500 font-medium">Pinyin</th>
-              <th className="text-left px-4 py-3 text-gray-500 font-medium">English</th>
-              <th className="text-left px-4 py-3 text-gray-500 font-medium">Indonesian</th>
+            <tr style={{ background: 'var(--duo-green)', borderBottom: '3px solid var(--duo-green-dark)' }}>
+              {['Hanzi', 'Pinyin', 'English', 'Indonesian'].map(h => (
+                <th key={h} className="text-left px-3 py-3 text-xs font-black uppercase tracking-wider text-white">{h}</th>
+              ))}
             </tr>
           </thead>
           <tbody>
             {characters.map((char, i) => (
               <tr
                 key={char.id}
-                className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
+                style={{
+                  background: i % 2 === 0 ? 'white' : '#F8FBFF',
+                  borderBottom: '2px solid var(--duo-border)',
+                }}
               >
-                <td className="px-4 py-3 text-2xl font-bold text-gray-900">{char.hanzi}</td>
-                <td className="px-4 py-3 text-gray-700">{char.pinyin}</td>
-                <td className="px-4 py-3 text-gray-700">{char.english}</td>
-                <td className="px-4 py-3 text-gray-500">{char.indonesian}</td>
+                <td className="px-3 py-3 text-2xl font-black" style={{ color: 'var(--duo-text)' }}>{char.hanzi}</td>
+                <td className="px-3 py-2 text-sm font-bold" style={{ color: 'var(--duo-blue)' }}>{char.pinyin}</td>
+                <td className="px-3 py-2 text-sm font-semibold" style={{ color: 'var(--duo-text)' }}>{char.english}</td>
+                <td className="px-3 py-2 text-sm font-semibold" style={{ color: 'var(--duo-text-light)' }}>{char.indonesian}</td>
               </tr>
             ))}
           </tbody>

@@ -1,26 +1,116 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --duo-green: #58CC02;
+  --duo-green-dark: #46A302;
+  --duo-red: #FF4B4B;
+  --duo-red-dark: #EA2B2B;
+  --duo-blue: #1CB0F6;
+  --duo-blue-dark: #0099DA;
+  --duo-yellow: #FFC800;
+  --duo-yellow-dark: #E6A500;
+  --duo-bg: #F0F4F4;
+  --duo-card: #FFFFFF;
+  --duo-text: #3C3C3C;
+  --duo-text-light: #AFAFAF;
+  --duo-border: #E5E5E5;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-nunito);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--duo-bg);
+  color: var(--duo-text);
+  font-family: var(--font-nunito), 'Nunito', sans-serif;
+  font-weight: 700;
+}
+
+/* Duolingo-style 3D button */
+.btn-duo-green {
+  background: var(--duo-green);
+  border-bottom: 4px solid var(--duo-green-dark);
+  color: white;
+  border-radius: 16px;
+  font-weight: 800;
+  font-size: 1rem;
+  padding: 0.75rem 1.25rem;
+  width: 100%;
+  transition: border-bottom 0.08s, transform 0.08s;
+  cursor: pointer;
+}
+.btn-duo-green:active {
+  border-bottom: 0px;
+  transform: translateY(4px);
+}
+.btn-duo-green:disabled {
+  background: #AFAFAF;
+  border-bottom-color: #8C8C8C;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-duo-red {
+  background: var(--duo-red);
+  border-bottom: 4px solid var(--duo-red-dark);
+  color: white;
+  border-radius: 16px;
+  font-weight: 800;
+  font-size: 1rem;
+  padding: 0.75rem 1.25rem;
+  width: 100%;
+  transition: border-bottom 0.08s, transform 0.08s;
+  cursor: pointer;
+}
+.btn-duo-red:active {
+  border-bottom: 0px;
+  transform: translateY(4px);
+}
+
+.btn-duo-outline-red {
+  background: white;
+  border: 2.5px solid var(--duo-red);
+  border-bottom: 4px solid var(--duo-red);
+  color: var(--duo-red);
+  border-radius: 16px;
+  font-weight: 800;
+  font-size: 1rem;
+  padding: 0.75rem 1.25rem;
+  width: 100%;
+  transition: border-bottom 0.08s, transform 0.08s;
+  cursor: pointer;
+}
+.btn-duo-outline-red:active {
+  border-bottom: 2.5px solid var(--duo-red);
+  transform: translateY(2px);
+}
+
+.btn-duo-outline-green {
+  background: white;
+  border: 2.5px solid var(--duo-green);
+  border-bottom: 4px solid var(--duo-green);
+  color: var(--duo-green);
+  border-radius: 16px;
+  font-weight: 800;
+  font-size: 1rem;
+  padding: 0.75rem 1.25rem;
+  width: 100%;
+  transition: border-bottom 0.08s, transform 0.08s;
+  cursor: pointer;
+}
+.btn-duo-outline-green:active {
+  border-bottom: 2.5px solid var(--duo-green);
+  transform: translateY(2px);
+}
+
+.duo-card {
+  background: white;
+  border: 2px solid var(--duo-border);
+  border-radius: 20px;
+  box-shadow: 0 2px 0 var(--duo-border);
 }

@@ -118,14 +118,16 @@ export default function Flashcard({ refreshKey }: { refreshKey: number }) {
   const overlayOpacity = Math.min(Math.abs(dragX) / 150, 0.65)
   const overlayColor = dragX > 0 ? `rgba(34,197,94,${overlayOpacity})` : `rgba(239,68,68,${overlayOpacity})`
 
-  if (loading) return <div className="flex items-center justify-center h-64 text-gray-400">Loading...</div>
+  if (loading) return (
+    <div className="flex items-center justify-center h-64 font-black" style={{ color: 'var(--duo-text-light)' }}>Loading...</div>
+  )
 
   if (allCards.length === 0) {
     return (
-      <div className="max-w-md mx-auto px-4 py-12 text-center space-y-3">
-        <p className="text-5xl">📖</p>
-        <p className="text-gray-600 font-medium">No characters yet</p>
-        <p className="text-gray-400 text-sm">Go to the + tab and save your first one.</p>
+      <div className="max-w-md mx-auto px-4 py-16 text-center space-y-3">
+        <p className="text-6xl">📖</p>
+        <p className="text-xl font-black" style={{ color: 'var(--duo-text)' }}>No characters yet</p>
+        <p className="font-semibold" style={{ color: 'var(--duo-text-light)' }}>Go to the + tab and save your first one.</p>
       </div>
     )
   }
@@ -133,9 +135,9 @@ export default function Flashcard({ refreshKey }: { refreshKey: number }) {
   if (completed) {
     return (
       <div className="max-w-md mx-auto px-4 py-16 text-center space-y-4">
-        <p className="text-6xl">🎉</p>
-        <p className="text-2xl font-bold text-gray-800">You remembered them all!</p>
-        <p className="text-gray-400 text-sm">Reshuffling in a moment...</p>
+        <p className="text-7xl">🎉</p>
+        <p className="text-2xl font-black" style={{ color: 'var(--duo-green)' }}>You remembered them all!</p>
+        <p className="font-bold" style={{ color: 'var(--duo-text-light)' }}>Reshuffling in a moment...</p>
       </div>
     )
   }
@@ -150,15 +152,15 @@ export default function Flashcard({ refreshKey }: { refreshKey: number }) {
 
       {/* Tracker */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="bg-green-50 border border-green-200 rounded-2xl p-3 text-center">
-          <p className="text-2xl font-bold text-green-600">{rememberedCount}</p>
-          <p className="text-xs text-green-500 mt-0.5">
+        <div className="duo-card p-3 text-center" style={{ borderColor: '#77DD77', boxShadow: '0 3px 0 #46A302' }}>
+          <p className="text-3xl font-black" style={{ color: 'var(--duo-green)' }}>{rememberedCount}</p>
+          <p className="text-xs font-black uppercase tracking-wide mt-0.5" style={{ color: 'var(--duo-green)' }}>
             Remembered · {total > 0 ? Math.round(rememberedCount / total * 100) : 0}%
           </p>
         </div>
-        <div className="bg-red-50 border border-red-200 rounded-2xl p-3 text-center">
-          <p className="text-2xl font-bold text-red-500">{relearnCount}</p>
-          <p className="text-xs text-red-400 mt-0.5">
+        <div className="duo-card p-3 text-center" style={{ borderColor: '#FFB3B3', boxShadow: '0 3px 0 #EA2B2B' }}>
+          <p className="text-3xl font-black" style={{ color: 'var(--duo-red)' }}>{relearnCount}</p>
+          <p className="text-xs font-black uppercase tracking-wide mt-0.5" style={{ color: 'var(--duo-red)' }}>
             Relearn · {total > 0 ? Math.round(relearnCount / total * 100) : 0}%
           </p>
         </div>
@@ -166,10 +168,17 @@ export default function Flashcard({ refreshKey }: { refreshKey: number }) {
 
       {/* Cards left + Shuffle */}
       <div className="flex items-center justify-between">
-        <span className="text-sm text-gray-400">{deck.length} cards left</span>
+        <span className="text-sm font-bold" style={{ color: 'var(--duo-text-light)' }}>{deck.length} cards left</span>
         <button
           onClick={() => { setDeck(prev => shuffle([...prev])); setFlipped(false) }}
-          className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-700 transition-colors px-3 py-1.5 rounded-xl hover:bg-gray-100"
+          className="flex items-center gap-1.5 px-4 py-2 font-black text-sm"
+          style={{
+            background: 'white',
+            border: '2.5px solid var(--duo-border)',
+            borderBottom: '4px solid var(--duo-border)',
+            borderRadius: '12px',
+            color: 'var(--duo-text-light)',
+          }}
         >
           🔀 Shuffle
         </button>
@@ -188,16 +197,34 @@ export default function Flashcard({ refreshKey }: { refreshKey: number }) {
       >
         {/* KNOW label */}
         <div
-          className="absolute left-4 top-6 z-10 font-bold text-green-500 text-lg border-2 border-green-500 rounded-lg px-2 py-1 pointer-events-none"
-          style={{ opacity: dragX > 20 ? Math.min(dragX / 80, 1) : 0, transform: 'rotate(-20deg)' }}
+          className="absolute left-4 top-6 z-10 text-lg pointer-events-none"
+          style={{
+            opacity: dragX > 20 ? Math.min(dragX / 80, 1) : 0,
+            transform: 'rotate(-20deg)',
+            color: 'var(--duo-green)',
+            border: '3px solid var(--duo-green)',
+            borderRadius: '10px',
+            padding: '2px 10px',
+            fontWeight: 900,
+            background: 'white',
+          }}
         >
           KNOW ✓
         </div>
 
         {/* RELEARN label */}
         <div
-          className="absolute right-4 top-6 z-10 font-bold text-red-500 text-lg border-2 border-red-500 rounded-lg px-2 py-1 pointer-events-none"
-          style={{ opacity: dragX < -20 ? Math.min(-dragX / 80, 1) : 0, transform: 'rotate(20deg)' }}
+          className="absolute right-4 top-6 z-10 text-lg pointer-events-none"
+          style={{
+            opacity: dragX < -20 ? Math.min(-dragX / 80, 1) : 0,
+            transform: 'rotate(20deg)',
+            color: 'var(--duo-red)',
+            border: '3px solid var(--duo-red)',
+            borderRadius: '10px',
+            padding: '2px 10px',
+            fontWeight: 900,
+            background: 'white',
+          }}
         >
           RELEARN ✗
         </div>
@@ -210,31 +237,42 @@ export default function Flashcard({ refreshKey }: { refreshKey: number }) {
         >
           {/* Color overlay when dragging */}
           {isDragging && dragX !== 0 && (
-            <div className="absolute inset-0 rounded-3xl z-10 pointer-events-none" style={{ backgroundColor: overlayColor }} />
+            <div className="absolute inset-0 z-10 pointer-events-none" style={{ backgroundColor: overlayColor, borderRadius: '20px' }} />
           )}
 
           {/* Front */}
           {!flipped && (
             <div
-              className="absolute inset-0 bg-white border border-gray-200 rounded-3xl shadow-md flex flex-col items-center justify-center"
-              style={{ opacity: fading ? 0 : 1, transition: 'opacity 0.15s ease' }}
+              className="duo-card absolute inset-0 flex flex-col items-center justify-center"
+              style={{
+                opacity: fading ? 0 : 1,
+                transition: 'opacity 0.15s ease',
+                boxShadow: '0 4px 0 var(--duo-border)',
+              }}
             >
-              <p className="text-8xl font-bold text-gray-900">{card.hanzi}</p>
-              <p className="text-gray-400 text-sm mt-4">Tap to reveal · Swipe to judge</p>
+              <p style={{ fontSize: '5.5rem', fontWeight: 900, color: 'var(--duo-text)', lineHeight: 1 }}>{card.hanzi}</p>
+              <p className="text-sm font-bold mt-4" style={{ color: 'var(--duo-text-light)' }}>Tap to reveal · Swipe to judge</p>
             </div>
           )}
 
           {/* Back */}
           {flipped && (
             <div
-              className="absolute inset-0 bg-red-50 border border-red-100 rounded-3xl shadow-md flex flex-col items-center justify-center gap-3 px-6"
-              style={{ opacity: fading ? 0 : 1, transition: 'opacity 0.15s ease' }}
+              className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6"
+              style={{
+                opacity: fading ? 0 : 1,
+                transition: 'opacity 0.15s ease',
+                background: '#F0FFF0',
+                border: '2px solid #77DD77',
+                borderRadius: '20px',
+                boxShadow: '0 4px 0 var(--duo-green-dark)',
+              }}
             >
-              <p className="text-5xl font-bold text-red-600">{card.hanzi}</p>
-              <p className="text-xl text-gray-700 font-medium">{card.pinyin}</p>
-              <div className="w-full border-t border-red-100 pt-3 space-y-1 text-center">
-                <p className="text-gray-800">{card.english}</p>
-                <p className="text-gray-500 text-sm">{card.indonesian}</p>
+              <p style={{ fontSize: '3.5rem', fontWeight: 900, color: 'var(--duo-green)', lineHeight: 1 }}>{card.hanzi}</p>
+              <p className="font-black text-xl" style={{ color: 'var(--duo-blue)' }}>{card.pinyin}</p>
+              <div className="w-full pt-3 space-y-1 text-center" style={{ borderTop: '2px solid #CCEECC' }}>
+                <p className="font-bold" style={{ color: 'var(--duo-text)' }}>{card.english}</p>
+                <p className="text-sm font-semibold" style={{ color: 'var(--duo-text-light)' }}>{card.indonesian}</p>
               </div>
             </div>
           )}
@@ -243,16 +281,10 @@ export default function Flashcard({ refreshKey }: { refreshKey: number }) {
 
       {/* Buttons */}
       <div className="flex gap-3">
-        <button
-          onClick={() => doSwipe('left')}
-          className="flex-1 border-2 border-red-300 text-red-400 py-3 rounded-xl font-medium hover:bg-red-50 transition-colors"
-        >
+        <button onClick={() => doSwipe('left')} className="btn-duo-outline-red flex-1">
           ✗ Relearn
         </button>
-        <button
-          onClick={() => doSwipe('right')}
-          className="flex-1 border-2 border-green-300 text-green-500 py-3 rounded-xl font-medium hover:bg-green-50 transition-colors"
-        >
+        <button onClick={() => doSwipe('right')} className="btn-duo-outline-green flex-1">
           ✓ Know it
         </button>
       </div>

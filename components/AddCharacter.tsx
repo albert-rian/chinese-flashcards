@@ -24,15 +24,11 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
     setError('')
     setResult(null)
     setSuccessMsg('')
-
     try {
       const res = await fetch(`/api/lookup?hanzi=${encodeURIComponent(input.trim())}`)
       const data = await res.json()
-      if (data.error) {
-        setError(data.error)
-      } else {
-        setResult(data)
-      }
+      if (data.error) setError(data.error)
+      else setResult(data)
     } catch {
       setError('Failed to look up character. Please try again.')
     } finally {
@@ -44,16 +40,13 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
     if (!result) return
     setSaving(true)
     setError('')
-
     const { error: dbError } = await supabase.from('characters').upsert({
       hanzi: result.hanzi,
       pinyin: result.pinyin,
       english: result.english,
       indonesian: result.indonesian,
     })
-
     setSaving(false)
-
     if (dbError) {
       setError('Failed to save: ' + dbError.message)
     } else {
@@ -65,12 +58,16 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
   }
 
   return (
-    <div className="max-w-md mx-auto px-4 py-6 space-y-6">
+    <div className="max-w-md mx-auto px-4 py-6 space-y-5">
+      {/* Title */}
       <div>
-        <h2 className="text-xl font-semibold text-gray-800 mb-1">Add a Character</h2>
-        <p className="text-sm text-gray-500">Type any Hanzi and the app will find the rest.</p>
+        <h2 className="text-2xl font-black" style={{ color: 'var(--duo-text)' }}>Add a Character</h2>
+        <p className="text-sm font-semibold mt-1" style={{ color: 'var(--duo-text-light)' }}>
+          Type any Hanzi — we'll find the rest!
+        </p>
       </div>
 
+      {/* Input row */}
       <div className="flex gap-2">
         <input
           type="text"
@@ -78,50 +75,63 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleLookup()}
           placeholder="e.g. 你"
-          className="flex-1 border border-gray-300 rounded-xl px-4 py-3 text-2xl text-center focus:outline-none focus:ring-2 focus:ring-red-400"
+          className="flex-1 text-3xl text-center outline-none"
+          style={{
+            background: 'white',
+            border: '2.5px solid var(--duo-border)',
+            borderBottom: '4px solid var(--duo-border)',
+            borderRadius: '16px',
+            padding: '0.75rem',
+            fontFamily: 'inherit',
+            fontWeight: 800,
+            color: 'var(--duo-text)',
+          }}
         />
         <button
           onClick={handleLookup}
           disabled={loading || !input.trim()}
-          className="bg-red-500 text-white px-5 py-3 rounded-xl font-medium hover:bg-red-600 disabled:opacity-50 transition-colors"
+          className="btn-duo-green"
+          style={{ width: 'auto', padding: '0.75rem 1.25rem', fontSize: '0.95rem' }}
         >
-          {loading ? '...' : 'Look Up'}
+          {loading ? '...' : '🔍 Look Up'}
         </button>
       </div>
 
       {error && (
-        <p className="text-red-500 text-sm">{error}</p>
+        <div style={{ background: '#FFF0F0', border: '2px solid var(--duo-red)', borderRadius: '16px', padding: '0.75rem 1rem' }}>
+          <p className="text-sm font-bold" style={{ color: 'var(--duo-red)' }}>{error}</p>
+        </div>
       )}
 
       {successMsg && (
-        <p className="text-green-600 text-sm font-medium">{successMsg}</p>
+        <div style={{ background: '#F0FFF0', border: '2px solid var(--duo-green)', borderRadius: '16px', padding: '0.75rem 1rem' }}>
+          <p className="text-sm font-bold" style={{ color: 'var(--duo-green)' }}>✓ {successMsg}</p>
+        </div>
       )}
 
       {result && (
-        <div className="bg-white border border-gray-200 rounded-2xl p-6 space-y-4 shadow-sm">
-          <div className="text-center">
-            <p className="text-6xl font-bold text-gray-900">{result.hanzi}</p>
+        <div className="duo-card p-5 space-y-4">
+          {/* Big hanzi */}
+          <div className="text-center py-2">
+            <p className="font-black" style={{ fontSize: '5rem', color: 'var(--duo-text)', lineHeight: 1 }}>{result.hanzi}</p>
           </div>
-          <div className="space-y-2 text-sm">
-            <div className="flex gap-2">
-              <span className="text-gray-400 w-24 shrink-0">Pinyin</span>
-              <span className="text-gray-800 font-medium">{result.pinyin}</span>
-            </div>
-            <div className="flex gap-2">
-              <span className="text-gray-400 w-24 shrink-0">English</span>
-              <span className="text-gray-800">{result.english}</span>
-            </div>
-            <div className="flex gap-2">
-              <span className="text-gray-400 w-24 shrink-0">Indonesian</span>
-              <span className="text-gray-800">{result.indonesian}</span>
-            </div>
+
+          {/* Details */}
+          <div className="space-y-2">
+            {[
+              { label: 'Pinyin', value: result.pinyin, color: 'var(--duo-blue)' },
+              { label: 'English', value: result.english, color: 'var(--duo-text)' },
+              { label: 'Indonesian', value: result.indonesian, color: 'var(--duo-text-light)' },
+            ].map(row => (
+              <div key={row.label} className="flex items-center gap-3" style={{ borderBottom: '2px solid var(--duo-border)', paddingBottom: '0.5rem' }}>
+                <span className="text-xs font-black w-24 shrink-0 uppercase tracking-wider" style={{ color: 'var(--duo-text-light)' }}>{row.label}</span>
+                <span className="font-bold text-sm" style={{ color: row.color }}>{row.value}</span>
+              </div>
+            ))}
           </div>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="w-full bg-green-500 text-white py-3 rounded-xl font-medium hover:bg-green-600 disabled:opacity-50 transition-colors"
-          >
-            {saving ? 'Saving...' : 'Save to Library'}
+
+          <button onClick={handleSave} disabled={saving} className="btn-duo-green">
+            {saving ? 'Saving...' : '💾 Save to Library'}
           </button>
         </div>
       )}
