@@ -16,10 +16,6 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
   const [showNewLesson, setShowNewLesson] = useState(false)
   const [newLessonName, setNewLessonName] = useState('')
   const [creatingLesson, setCreatingLesson] = useState(false)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [deleteCount, setDeleteCount] = useState(0)
-  const [deletingLesson, setDeletingLesson] = useState(false)
-
   const [input, setInput] = useState('')
   const [result, setResult] = useState<LookupResult | null>(null)
   const [loading, setLoading] = useState(false)
@@ -62,25 +58,6 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
     setShowNewLesson(false)
   }
 
-  async function openDeleteConfirm() {
-    const { count } = await supabase
-      .from('characters')
-      .select('*', { count: 'exact', head: true })
-      .eq('lesson_id', selectedLessonId)
-    setDeleteCount(count ?? 0)
-    setShowDeleteConfirm(true)
-  }
-
-  async function handleDeleteLesson() {
-    setDeletingLesson(true)
-    await supabase.from('lessons').delete().eq('id', selectedLessonId)
-    setLessons(prev => prev.filter(l => l.id !== selectedLessonId))
-    setSelectedLessonId('')
-    setShowDeleteConfirm(false)
-    setDeletingLesson(false)
-    onSaved()
-  }
-
   async function handleLookup() {
     if (!input.trim()) return
     setLoading(true)
@@ -121,7 +98,7 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
     }
   }
 
-  const selectedLesson = lessons.find(l => l.id === selectedLessonId)
+  const selectedLesson = lessons.find(l => l.id === selectedLessonId)?.name
 
   return (
     <div className="max-w-md mx-auto px-4 py-6 space-y-5">
@@ -157,23 +134,6 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
             ))}
           </select>
 
-          {selectedLessonId && (
-            <button
-              onClick={openDeleteConfirm}
-              title="Delete this lesson"
-              style={{
-                background: 'white',
-                border: '2.5px solid var(--duo-border)',
-                borderBottom: '4px solid var(--duo-border)',
-                borderRadius: '14px',
-                padding: '0.6rem 0.85rem',
-                fontSize: '1.1rem',
-                cursor: 'pointer',
-              }}
-            >
-              🗑️
-            </button>
-          )}
         </div>
 
         {/* New lesson toggle */}
@@ -237,69 +197,13 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
         )}
       </div>
 
-      {/* ── Delete Confirmation Modal ── */}
-      {showDeleteConfirm && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.45)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 50,
-            padding: '1rem',
-          }}
-        >
-          <div
-            className="duo-card p-6 space-y-4"
-            style={{ maxWidth: '320px', width: '100%' }}
-          >
-            <p className="text-xl font-black" style={{ color: 'var(--duo-text)' }}>Delete lesson?</p>
-            <p className="font-semibold text-sm" style={{ color: 'var(--duo-text-light)' }}>
-              <span style={{ fontWeight: 800, color: 'var(--duo-text)' }}>"{selectedLesson?.name}"</span> will be deleted
-              along with <span style={{ fontWeight: 800, color: 'var(--duo-red)' }}>{deleteCount} hanzi</span>.
-              This cannot be undone.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                style={{
-                  flex: 1,
-                  background: 'white',
-                  border: '2.5px solid var(--duo-border)',
-                  borderBottom: '4px solid var(--duo-border)',
-                  borderRadius: '14px',
-                  padding: '0.65rem',
-                  fontFamily: 'inherit',
-                  fontWeight: 800,
-                  fontSize: '0.95rem',
-                  color: 'var(--duo-text-light)',
-                  cursor: 'pointer',
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteLesson}
-                disabled={deletingLesson}
-                className="btn-duo-red"
-                style={{ flex: 1, width: 'auto' }}
-              >
-                {deletingLesson ? 'Deleting…' : 'Delete'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* ── Add Character Form ── */}
       <div>
         <div className="mb-4">
           <h2 className="text-2xl font-black" style={{ color: 'var(--duo-text)' }}>Add a Character</h2>
           <p className="text-sm font-semibold mt-1" style={{ color: 'var(--duo-text-light)' }}>
             {selectedLessonId
-              ? `Adding to "${selectedLesson?.name}"`
+              ? `Adding to "${selectedLesson}"`
               : 'Select a lesson above first'}
           </p>
         </div>

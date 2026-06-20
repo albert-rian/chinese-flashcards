@@ -210,16 +210,16 @@ export default function Flashcard({ refreshKey }: { refreshKey: number }) {
 
       {/* Tracker */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="duo-card p-3 text-center" style={{ borderColor: '#77DD77', boxShadow: '0 3px 0 #46A302' }}>
-          <p className="text-3xl font-black" style={{ color: 'var(--duo-green)' }}>{rememberedCount}</p>
-          <p className="text-xs font-black uppercase tracking-wide mt-0.5" style={{ color: 'var(--duo-green)' }}>
-            Remembered · {total > 0 ? Math.round(rememberedCount / total * 100) : 0}%
-          </p>
-        </div>
         <div className="duo-card p-3 text-center" style={{ borderColor: '#FFB3B3', boxShadow: '0 3px 0 #EA2B2B' }}>
           <p className="text-3xl font-black" style={{ color: 'var(--duo-red)' }}>{relearnCount}</p>
           <p className="text-xs font-black uppercase tracking-wide mt-0.5" style={{ color: 'var(--duo-red)' }}>
             Relearn · {total > 0 ? Math.round(relearnCount / total * 100) : 0}%
+          </p>
+        </div>
+        <div className="duo-card p-3 text-center" style={{ borderColor: '#77DD77', boxShadow: '0 3px 0 #46A302' }}>
+          <p className="text-3xl font-black" style={{ color: 'var(--duo-green)' }}>{rememberedCount}</p>
+          <p className="text-xs font-black uppercase tracking-wide mt-0.5" style={{ color: 'var(--duo-green)' }}>
+            Remembered · {total > 0 ? Math.round(rememberedCount / total * 100) : 0}%
           </p>
         </div>
       </div>

@@ -5,28 +5,36 @@ import { supabase, Lesson, Character } from '@/lib/supabase'
 
 type LessonWithChars = Lesson & { characters: Character[] }
 
+type ConfirmState =
+  | { type: 'lesson'; lesson: Lesson; count: number }
+  | { type: 'char'; char: Character }
+  | null
+
 export default function Library({ refreshKey }: { refreshKey: number }) {
   const [groups, setGroups] = useState<LessonWithChars[]>([])
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
+  const [confirm, setConfirm] = useState<ConfirmState>(null)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
-    async function fetchAll() {
-      setLoading(true)
-      const [{ data: lessonsData }, { data: charsData }] = await Promise.all([
-        supabase.from('lessons').select('*'),
-        supabase.from('characters').select('*').order('created_at', { ascending: true }),
-      ])
-      const chars = charsData || []
-      const sorted = sortLessons(lessonsData || [])
-      setGroups(sorted.map(l => ({
-        ...l,
-        characters: chars.filter(c => c.lesson_id === l.id),
-      })))
-      setLoading(false)
-    }
     fetchAll()
   }, [refreshKey])
+
+  async function fetchAll() {
+    setLoading(true)
+    const [{ data: lessonsData }, { data: charsData }] = await Promise.all([
+      supabase.from('lessons').select('*'),
+      supabase.from('characters').select('*').order('created_at', { ascending: true }),
+    ])
+    const chars = charsData || []
+    const sorted = sortLessons(lessonsData || [])
+    setGroups(sorted.map(l => ({
+      ...l,
+      characters: chars.filter(c => c.lesson_id === l.id),
+    })))
+    setLoading(false)
+  }
 
   function sortLessons(list: Lesson[]) {
     return [...list].sort((a, b) => {
@@ -42,6 +50,36 @@ export default function Library({ refreshKey }: { refreshKey: number }) {
       next.has(id) ? next.delete(id) : next.add(id)
       return next
     })
+  }
+
+  async function openLessonDelete(lesson: Lesson) {
+    const { count } = await supabase
+      .from('characters')
+      .select('*', { count: 'exact', head: true })
+      .eq('lesson_id', lesson.id)
+    setConfirm({ type: 'lesson', lesson, count: count ?? 0 })
+  }
+
+  async function handleDeleteLesson() {
+    if (confirm?.type !== 'lesson') return
+    setDeleting(true)
+    await supabase.from('lessons').delete().eq('id', confirm.lesson.id)
+    setGroups(prev => prev.filter(g => g.id !== confirm.lesson.id))
+    setExpanded(prev => { const n = new Set(prev); n.delete(confirm.lesson.id); return n })
+    setConfirm(null)
+    setDeleting(false)
+  }
+
+  async function handleDeleteChar() {
+    if (confirm?.type !== 'char') return
+    setDeleting(true)
+    await supabase.from('characters').delete().eq('id', confirm.char.id)
+    setGroups(prev => prev.map(g => ({
+      ...g,
+      characters: g.characters.filter(c => c.id !== confirm.char.id),
+    })))
+    setConfirm(null)
+    setDeleting(false)
   }
 
   const totalCount = groups.reduce((s, g) => s + g.characters.length, 0)
@@ -74,23 +112,21 @@ export default function Library({ refreshKey }: { refreshKey: number }) {
         return (
           <div key={group.id} className="duo-card overflow-hidden">
             {/* Header */}
-            <button
-              onClick={() => toggle(group.id)}
-              className="w-full flex items-center justify-between px-4 py-3"
+            <div
+              className="flex items-center justify-between px-4 py-3"
               style={{
                 background: isOpen ? 'var(--duo-green)' : 'white',
                 borderBottom: isOpen ? '3px solid var(--duo-green-dark)' : 'none',
-                cursor: 'pointer',
-                textAlign: 'left',
               }}
             >
-              <span
-                className="font-black text-sm"
-                style={{ color: isOpen ? 'white' : 'var(--duo-text)' }}
+              <button
+                onClick={() => toggle(group.id)}
+                className="flex items-center gap-2 flex-1 text-left"
+                style={{ cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}
               >
-                {group.name}
-              </span>
-              <div className="flex items-center gap-2">
+                <span className="font-black text-sm" style={{ color: isOpen ? 'white' : 'var(--duo-text)' }}>
+                  {group.name}
+                </span>
                 <span
                   className="text-xs font-black px-2 py-0.5 rounded-full"
                   style={{
@@ -100,21 +136,36 @@ export default function Library({ refreshKey }: { refreshKey: number }) {
                 >
                   {group.characters.length}
                 </span>
-                <span
-                  className="text-sm font-black"
-                  style={{ color: isOpen ? 'white' : 'var(--duo-text-light)' }}
-                >
+                <span className="text-sm font-black ml-1" style={{ color: isOpen ? 'white' : 'var(--duo-text-light)' }}>
                   {isOpen ? '▲' : '▼'}
                 </span>
-              </div>
-            </button>
+              </button>
+
+              {/* Delete lesson button */}
+              <button
+                onClick={e => { e.stopPropagation(); openLessonDelete(group) }}
+                title="Delete this lesson"
+                style={{
+                  background: isOpen ? 'rgba(255,255,255,0.2)' : 'var(--duo-bg)',
+                  border: 'none',
+                  borderRadius: '10px',
+                  padding: '0.3rem 0.55rem',
+                  fontSize: '0.9rem',
+                  cursor: 'pointer',
+                  marginLeft: '0.5rem',
+                  lineHeight: 1,
+                }}
+              >
+                🗑️
+              </button>
+            </div>
 
             {/* Table */}
             {isOpen && group.characters.length > 0 && (
               <table className="w-full">
                 <thead>
                   <tr style={{ background: '#F0FFF0', borderBottom: '2px solid var(--duo-border)' }}>
-                    {['Hanzi', 'Pinyin', 'English', 'Indonesian'].map(h => (
+                    {['Hanzi', 'Pinyin', 'English', 'Indonesian', ''].map(h => (
                       <th key={h} className="text-left px-3 py-2 text-xs font-black uppercase tracking-wider" style={{ color: 'var(--duo-green-dark)' }}>{h}</th>
                     ))}
                   </tr>
@@ -132,6 +183,25 @@ export default function Library({ refreshKey }: { refreshKey: number }) {
                       <td className="px-3 py-2 text-sm font-bold" style={{ color: 'var(--duo-blue)' }}>{char.pinyin}</td>
                       <td className="px-3 py-2 text-sm font-semibold" style={{ color: 'var(--duo-text)' }}>{char.english}</td>
                       <td className="px-3 py-2 text-sm font-semibold" style={{ color: 'var(--duo-text-light)' }}>{char.indonesian}</td>
+                      <td className="px-2 py-2 text-right">
+                        <button
+                          onClick={() => setConfirm({ type: 'char', char })}
+                          title="Delete this character"
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            fontSize: '0.85rem',
+                            cursor: 'pointer',
+                            opacity: 0.5,
+                            padding: '0.2rem 0.4rem',
+                            borderRadius: '8px',
+                          }}
+                          onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+                          onMouseLeave={e => (e.currentTarget.style.opacity = '0.5')}
+                        >
+                          🗑️
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -146,6 +216,71 @@ export default function Library({ refreshKey }: { refreshKey: number }) {
           </div>
         )
       })}
+
+      {/* ── Confirmation Modal ── */}
+      {confirm && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 50,
+            padding: '1rem',
+          }}
+        >
+          <div className="duo-card p-6 space-y-4" style={{ maxWidth: '320px', width: '100%' }}>
+            {confirm.type === 'lesson' ? (
+              <>
+                <p className="text-xl font-black" style={{ color: 'var(--duo-text)' }}>Delete lesson?</p>
+                <p className="font-semibold text-sm" style={{ color: 'var(--duo-text-light)' }}>
+                  <span style={{ fontWeight: 800, color: 'var(--duo-text)' }}>"{confirm.lesson.name}"</span> will be deleted
+                  along with <span style={{ fontWeight: 800, color: 'var(--duo-red)' }}>{confirm.count} hanzi</span>.
+                  This cannot be undone.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-xl font-black" style={{ color: 'var(--duo-text)' }}>Delete hanzi?</p>
+                <p className="font-semibold text-sm" style={{ color: 'var(--duo-text-light)' }}>
+                  <span style={{ fontWeight: 900, fontSize: '1.5rem', color: 'var(--duo-text)' }}>{confirm.char.hanzi}</span>
+                  {' '}({confirm.char.pinyin} – {confirm.char.english}) will be permanently deleted.
+                </p>
+              </>
+            )}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirm(null)}
+                style={{
+                  flex: 1,
+                  background: 'white',
+                  border: '2.5px solid var(--duo-border)',
+                  borderBottom: '4px solid var(--duo-border)',
+                  borderRadius: '14px',
+                  padding: '0.65rem',
+                  fontFamily: 'inherit',
+                  fontWeight: 800,
+                  fontSize: '0.95rem',
+                  color: 'var(--duo-text-light)',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirm.type === 'lesson' ? handleDeleteLesson : handleDeleteChar}
+                disabled={deleting}
+                className="btn-duo-red"
+                style={{ flex: 1, width: 'auto' }}
+              >
+                {deleting ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
