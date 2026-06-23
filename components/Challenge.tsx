@@ -96,7 +96,7 @@ export default function Challenge({ refreshKey }: { refreshKey: number }) {
   }
 
   function handleSelect(i: number) {
-    if (selected !== null) return
+    if (checked) return
     setSelected(i)
   }
 
@@ -360,7 +360,7 @@ export default function Challenge({ refreshKey }: { refreshKey: number }) {
             <button
               key={i}
               onClick={() => handleSelect(i)}
-              disabled={selected !== null}
+              disabled={checked}
               style={{
                 background: bg,
                 border: `2.5px solid ${borderColor}`,
@@ -368,7 +368,7 @@ export default function Challenge({ refreshKey }: { refreshKey: number }) {
                 borderRadius: '16px',
                 padding: mode === 'en-zh' ? '0.75rem 0.5rem' : '1rem 0.75rem',
                 fontFamily: 'inherit',
-                cursor: selected !== null ? 'default' : 'pointer',
+                cursor: checked ? 'default' : 'pointer',
                 textAlign: 'center',
                 transition: 'all 0.15s ease',
                 minHeight: '88px',
