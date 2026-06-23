@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Nunito } from "next/font/google";
 import "./globals.css";
 
@@ -8,9 +8,22 @@ const nunito = Nunito({
   weight: ["400", "600", "700", "800", "900"],
 });
 
+export const viewport: Viewport = {
+  themeColor: "#58CC02",
+};
+
 export const metadata: Metadata = {
   title: "汉字 Flashcards",
   description: "My personal Chinese character practice app",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    title: "汉字",
+    capable: true,
+    statusBarStyle: "default",
+  },
+  icons: {
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export default function RootLayout({
