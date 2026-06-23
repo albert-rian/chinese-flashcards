@@ -26,7 +26,6 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
   const [existingIn, setExistingIn] = useState<{ lesson_id: string; lessonName: string }[]>([])
-  const [showDetails, setShowDetails] = useState(false)
 
   useEffect(() => {
     fetchLessons()
@@ -82,7 +81,6 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
     setResult(null)
     setSuccessMsg('')
     setExistingIn([])
-    setShowDetails(false)
     try {
       const res = await fetch(`/api/lookup?hanzi=${encodeURIComponent(trimmed)}`)
       const data = await res.json()
@@ -90,7 +88,6 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
         setError(data.error)
       } else {
         setResult(data)
-        setShowDetails(true)
         const { data: existing } = await supabase
           .from('characters')
           .select('lesson_id, lessons(name)')
@@ -132,7 +129,6 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
       setInput('')
       setResult(null)
       setExistingIn([])
-      setShowDetails(false)
       onSaved()
     }
   }
@@ -269,7 +265,7 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
               borderRadius: '16px',
               padding: '0.75rem 0.5rem',
               fontFamily: 'inherit',
-              fontWeight: 800,
+              fontWeight: 700,
               color: 'var(--duo-text)',
               opacity: selectedLessonId ? 1 : 0.5,
             }}
@@ -297,36 +293,9 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
         </div>
       )}
 
-      {result && !showDetails && (
-        <div className="duo-card p-4 flex items-center gap-3">
-          <p style={{ fontSize: '2.5rem', fontWeight: 700, color: 'var(--duo-text)', lineHeight: 1 }}>{result.hanzi}</p>
-          <div className="flex-1 min-w-0">
-            <p className="font-black" style={{ color: 'var(--duo-blue)' }}>{result.pinyin}</p>
-            <p className="text-sm font-semibold truncate" style={{ color: 'var(--duo-text)' }}>{result.english}</p>
-          </div>
-          <button
-            onClick={() => setShowDetails(true)}
-            style={{
-              background: 'var(--duo-bg)',
-              border: '2px solid var(--duo-border)',
-              borderBottom: '3px solid var(--duo-border)',
-              borderRadius: '12px',
-              padding: '0.45rem 0.8rem',
-              fontFamily: 'inherit',
-              fontWeight: 800,
-              fontSize: '0.8rem',
-              color: 'var(--duo-text-light)',
-              cursor: 'pointer',
-              flexShrink: 0,
-            }}
-          >
-            Details →
-          </button>
-        </div>
-      )}
-
-      {showDetails && result && (
+      {result && (
         <HanziDetails
+          inline
           char={{
             id: '',
             hanzi: result.hanzi,
@@ -336,7 +305,6 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
             lesson_id: '',
             created_at: '',
           } as Character}
-          onClose={() => setShowDetails(false)}
           onSave={handleSave}
           saving={saving}
           alreadyInCurrentLesson={alreadyInCurrentLesson}
