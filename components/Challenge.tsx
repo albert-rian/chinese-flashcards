@@ -75,6 +75,7 @@ export default function Challenge({ refreshKey }: { refreshKey: number }) {
   const [questions, setQuestions] = useState<Question[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [selected, setSelected] = useState<number | null>(null)
+  const [checked, setChecked] = useState(false)
   const [score, setScore] = useState(0)
 
   useEffect(() => {
@@ -89,6 +90,7 @@ export default function Challenge({ refreshKey }: { refreshKey: number }) {
     setQuestions(buildQuestions(allChars, m))
     setCurrentIndex(0)
     setSelected(null)
+    setChecked(false)
     setScore(0)
     setPhase('quiz')
   }
@@ -96,15 +98,22 @@ export default function Challenge({ refreshKey }: { refreshKey: number }) {
   function handleSelect(i: number) {
     if (selected !== null) return
     setSelected(i)
-    if (i === questions[currentIndex].correctIndex) setScore(s => s + 1)
   }
 
   function handleNext() {
-    if (currentIndex < questions.length - 1) {
-      setCurrentIndex(idx => idx + 1)
-      setSelected(null)
+    if (!checked) {
+      // First press: reveal feedback and update score
+      setChecked(true)
+      if (selected === questions[currentIndex].correctIndex) setScore(s => s + 1)
     } else {
-      setPhase('complete')
+      // Second press: advance
+      if (currentIndex < questions.length - 1) {
+        setCurrentIndex(idx => idx + 1)
+        setSelected(null)
+        setChecked(false)
+      } else {
+        setPhase('complete')
+      }
     }
   }
 
@@ -327,15 +336,24 @@ export default function Challenge({ refreshKey }: { refreshKey: number }) {
         {q.options.map((opt, i) => {
           const isSelected = selected === i
           const isCorrect = i === q.correctIndex
-          const revealed = selected !== null
 
           let bg = 'white'
           let borderColor = 'var(--duo-border)'
           let shadowColor = 'var(--duo-border)'
+          let textColor = 'var(--duo-text)'
+          let pinyinColor = 'var(--duo-blue)'
 
-          if (revealed) {
-            if (isCorrect) { bg = '#F0FFF0'; borderColor = 'var(--duo-green)'; shadowColor = 'var(--duo-green-dark)' }
-            else if (isSelected) { bg = '#FFF0F0'; borderColor = 'var(--duo-red)'; shadowColor = '#EA2B2B' }
+          if (checked) {
+            if (isCorrect) {
+              bg = '#F0FFF0'; borderColor = 'var(--duo-green)'; shadowColor = 'var(--duo-green-dark)'
+              textColor = 'var(--duo-green)'; pinyinColor = 'var(--duo-green)'
+            } else if (isSelected) {
+              bg = '#FFF0F0'; borderColor = 'var(--duo-red)'; shadowColor = '#EA2B2B'
+              textColor = 'var(--duo-red)'
+            }
+          } else if (isSelected) {
+            // Selected but not yet revealed — neutral blue highlight
+            bg = '#EEF9FF'; borderColor = 'var(--duo-blue)'; shadowColor = 'var(--duo-blue-dark)'
           }
 
           return (
@@ -363,39 +381,22 @@ export default function Challenge({ refreshKey }: { refreshKey: number }) {
             >
               {mode === 'en-zh' ? (
                 <>
-                  <span style={{
-                    fontSize: '0.7rem',
-                    fontWeight: 700,
-                    color: revealed && isCorrect ? 'var(--duo-green)' : 'var(--duo-blue)',
-                    lineHeight: 1.3,
-                    display: 'block',
-                  }}>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: pinyinColor, lineHeight: 1.3, display: 'block' }}>
                     {opt.pinyin}
                   </span>
-                  <span style={{
-                    fontSize: '2rem',
-                    fontWeight: 700,
-                    color: revealed && isCorrect ? 'var(--duo-green)' : revealed && isSelected ? 'var(--duo-red)' : 'var(--duo-text)',
-                    lineHeight: 1.1,
-                    display: 'block',
-                  }}>
+                  <span style={{ fontSize: '2rem', fontWeight: 700, color: textColor, lineHeight: 1.1, display: 'block' }}>
                     {opt.hanzi}
                   </span>
                 </>
               ) : (
-                <span style={{
-                  fontSize: '0.95rem',
-                  fontWeight: 700,
-                  color: revealed && isCorrect ? 'var(--duo-green)' : revealed && isSelected ? 'var(--duo-red)' : 'var(--duo-text)',
-                  lineHeight: 1.3,
-                }}>
+                <span style={{ fontSize: '0.95rem', fontWeight: 700, color: textColor, lineHeight: 1.3 }}>
                   {opt.english}
                 </span>
               )}
-              {revealed && isCorrect && (
+              {checked && isCorrect && (
                 <span style={{ fontSize: '0.85rem', fontWeight: 900, color: 'var(--duo-green)', marginTop: '2px' }}>✓</span>
               )}
-              {revealed && isSelected && !isCorrect && (
+              {checked && isSelected && !isCorrect && (
                 <span style={{ fontSize: '0.85rem', fontWeight: 900, color: 'var(--duo-red)', marginTop: '2px' }}>✗</span>
               )}
             </button>
@@ -403,10 +404,12 @@ export default function Challenge({ refreshKey }: { refreshKey: number }) {
         })}
       </div>
 
-      {/* Next / Results button */}
+      {/* Next / Continue / Results button */}
       {selected !== null && (
         <button onClick={handleNext} className="btn-duo-green">
-          {currentIndex < questions.length - 1 ? 'Next →' : '🏁 See Results'}
+          {!checked
+            ? 'Next →'
+            : currentIndex < questions.length - 1 ? 'Continue →' : '🏁 See Results'}
         </button>
       )}
     </div>
