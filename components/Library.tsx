@@ -190,7 +190,7 @@ export default function Library({ refreshKey }: { refreshKey: number }) {
                         cursor: 'pointer',
                       }}
                     >
-                      <td className="px-3 py-2 text-2xl font-black" style={{ color: 'var(--duo-text)', whiteSpace: 'nowrap', width: '1%' }}>{char.hanzi}</td>
+                      <td className="px-3 py-2 text-2xl font-bold" style={{ color: 'var(--duo-text)', whiteSpace: 'nowrap', width: '1%' }}>{char.hanzi}</td>
                       <td className="px-3 py-2 text-sm font-bold" style={{ color: 'var(--duo-blue)', whiteSpace: 'nowrap', width: '1%' }}>{char.pinyin}</td>
                       <td className="px-3 py-2 text-sm font-semibold" style={{ color: 'var(--duo-text)' }}>{char.english}</td>
                       <td className="px-3 py-2 text-sm font-semibold" style={{ color: 'var(--duo-text-light)' }}>{char.indonesian}</td>

@@ -23,15 +23,26 @@ export default function Home() {
         <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.75)' }}>My Chinese character library</p>
       </header>
 
-      {/* Content */}
-      <main className="flex-1 overflow-y-auto pb-24">
+      {/* Content — extra bottom padding so content clears the floating nav */}
+      <main className="flex-1 overflow-y-auto" style={{ paddingBottom: 'calc(5.5rem + env(safe-area-inset-bottom))' }}>
         {activeTab === 'library' && <Library refreshKey={refreshKey} />}
         {activeTab === 'add' && <AddCharacter onSaved={handleSaved} />}
         {activeTab === 'flashcard' && <Flashcard refreshKey={refreshKey} />}
       </main>
 
-      {/* Bottom Tab Bar */}
-      <nav className="fixed bottom-0 left-0 right-0 flex z-10" style={{ background: 'white', borderTop: '2px solid var(--duo-border)' }}>
+      {/* Floating Bottom Tab Bar */}
+      <nav
+        className="fixed flex z-10"
+        style={{
+          left: '1rem',
+          right: '1rem',
+          bottom: 'calc(1rem + env(safe-area-inset-bottom))',
+          background: 'white',
+          borderRadius: '22px',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.13), 0 1px 6px rgba(0,0,0,0.07)',
+          padding: '0.3rem',
+        }}
+      >
         {([
           { key: 'library', label: 'Library', icon: '📚' },
           { key: 'add', label: 'Add', icon: '➕' },
@@ -40,10 +51,11 @@ export default function Home() {
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className="flex-1 flex flex-col items-center gap-1 py-3 transition-all"
+            className="flex-1 flex flex-col items-center gap-1 py-2.5 transition-all"
             style={{
               color: activeTab === tab.key ? 'var(--duo-green)' : 'var(--duo-text-light)',
-              borderTop: activeTab === tab.key ? '3px solid var(--duo-green)' : '3px solid transparent',
+              background: activeTab === tab.key ? '#F0FFF0' : 'transparent',
+              borderRadius: '16px',
               fontWeight: 800,
               fontSize: '0.7rem',
             }}

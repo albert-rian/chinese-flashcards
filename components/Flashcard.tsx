@@ -307,7 +307,7 @@ export default function Flashcard({ refreshKey }: { refreshKey: number }) {
                 boxShadow: '0 4px 0 var(--duo-border)',
               }}
             >
-              <p style={{ fontSize: '5.5rem', fontWeight: 900, color: 'var(--duo-text)', lineHeight: 1 }}>{card.hanzi}</p>
+              <p style={{ fontSize: '5.5rem', fontWeight: 700, color: 'var(--duo-text)', lineHeight: 1 }}>{card.hanzi}</p>
               <p className="text-sm font-bold mt-4" style={{ color: 'var(--duo-text-light)' }}>Tap to reveal · Swipe to judge</p>
             </div>
           )}
@@ -325,7 +325,7 @@ export default function Flashcard({ refreshKey }: { refreshKey: number }) {
                 boxShadow: '0 4px 0 var(--duo-green-dark)',
               }}
             >
-              <p style={{ fontSize: '3.5rem', fontWeight: 900, color: 'var(--duo-green)', lineHeight: 1 }}>{card.hanzi}</p>
+              <p style={{ fontSize: '3.5rem', fontWeight: 700, color: 'var(--duo-green)', lineHeight: 1 }}>{card.hanzi}</p>
               <p className="font-black text-xl" style={{ color: 'var(--duo-blue)' }}>{card.pinyin}</p>
               <div className="w-full pt-3 space-y-1 text-center" style={{ borderTop: '2px solid #CCEECC' }}>
                 <p className="font-bold" style={{ color: 'var(--duo-text)' }}>{card.english}</p>

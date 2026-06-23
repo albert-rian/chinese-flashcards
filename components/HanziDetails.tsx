@@ -133,7 +133,7 @@ export default function HanziDetails({ char, onClose }: { char: Character; onClo
 
         {/* Identity card */}
         <div className="duo-card p-5 text-center mb-4 space-y-2">
-          <p style={{ fontSize: hanziSize, fontWeight: 900, color: 'var(--duo-text)', lineHeight: 1.1 }}>
+          <p style={{ fontSize: hanziSize, fontWeight: 700, color: 'var(--duo-text)', lineHeight: 1.1 }}>
             {char.hanzi}
           </p>
           <p className="font-black text-xl" style={{ color: 'var(--duo-blue)' }}>{char.pinyin}</p>

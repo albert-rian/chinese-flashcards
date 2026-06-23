@@ -257,7 +257,7 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
       {result && (
         <div className="duo-card p-5 space-y-4">
           <div className="text-center py-2">
-            <p className="font-black" style={{ fontSize: '5rem', color: 'var(--duo-text)', lineHeight: 1 }}>{result.hanzi}</p>
+            <p className="font-bold" style={{ fontSize: '5rem', color: 'var(--duo-text)', lineHeight: 1 }}>{result.hanzi}</p>
           </div>
           <div className="space-y-2">
             {[
