@@ -22,6 +22,7 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
+  const [existingIn, setExistingIn] = useState<{ lesson_id: string; lessonName: string }[]>([])
 
   useEffect(() => {
     fetchLessons()
@@ -64,11 +65,25 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
     setError('')
     setResult(null)
     setSuccessMsg('')
+    setExistingIn([])
     try {
       const res = await fetch(`/api/lookup?hanzi=${encodeURIComponent(input.trim())}`)
       const data = await res.json()
-      if (data.error) setError(data.error)
-      else setResult(data)
+      if (data.error) {
+        setError(data.error)
+      } else {
+        setResult(data)
+        const { data: existing } = await supabase
+          .from('characters')
+          .select('lesson_id, lessons(name)')
+          .eq('hanzi', data.hanzi)
+        if (existing && existing.length > 0) {
+          setExistingIn(existing.map((e: any) => ({
+            lesson_id: e.lesson_id,
+            lessonName: e.lessons?.name ?? 'Unknown lesson',
+          })))
+        }
+      }
     } catch {
       setError('Failed to look up character. Please try again.')
     } finally {
@@ -78,6 +93,10 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
 
   async function handleSave() {
     if (!result || !selectedLessonId) return
+    if (existingIn.some(e => e.lesson_id === selectedLessonId)) {
+      setError(`"${result.hanzi}" is already in this lesson.`)
+      return
+    }
     setSaving(true)
     setError('')
     const { error: dbError } = await supabase.from('characters').upsert({
@@ -94,6 +113,7 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
       setSuccessMsg(`"${result.hanzi}" saved to library!`)
       setInput('')
       setResult(null)
+      setExistingIn([])
       onSaved()
     }
   }
@@ -212,7 +232,7 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
           <input
             type="text"
             value={input}
-            onChange={e => setInput(e.target.value)}
+            onChange={e => { setInput(e.target.value); setExistingIn([]) }}
             onKeyDown={e => e.key === 'Enter' && handleLookup()}
             placeholder="你"
             disabled={!selectedLessonId}
@@ -271,7 +291,39 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
               </div>
             ))}
           </div>
-          <button onClick={handleSave} disabled={saving} className="btn-duo-green">
+          {existingIn.length > 0 && (() => {
+            const alreadyHere = existingIn.some(e => e.lesson_id === selectedLessonId)
+            const otherLessons = existingIn
+              .filter(e => e.lesson_id !== selectedLessonId)
+              .map(e => e.lessonName)
+            if (alreadyHere) {
+              return (
+                <div style={{ background: '#FFF0F0', border: '2px solid var(--duo-red)', borderRadius: '12px', padding: '0.65rem 0.9rem' }}>
+                  <p className="text-sm font-bold" style={{ color: 'var(--duo-red)' }}>
+                    ⚠️ "{result.hanzi}" is already in this lesson.
+                  </p>
+                </div>
+              )
+            }
+            if (otherLessons.length > 0) {
+              return (
+                <div style={{ background: '#FFFBEB', border: '2px solid #F59E0B', borderRadius: '12px', padding: '0.65rem 0.9rem' }}>
+                  <p className="text-sm font-bold" style={{ color: '#92400E' }}>
+                    ℹ️ "{result.hanzi}" is already in: {otherLessons.join(', ')}.
+                  </p>
+                  <p className="text-xs font-semibold mt-1" style={{ color: '#B45309' }}>
+                    You can still add it to the selected lesson.
+                  </p>
+                </div>
+              )
+            }
+            return null
+          })()}
+          <button
+            onClick={handleSave}
+            disabled={saving || existingIn.some(e => e.lesson_id === selectedLessonId)}
+            className="btn-duo-green"
+          >
             {saving ? 'Saving…' : '💾 Save to Library'}
           </button>
         </div>
