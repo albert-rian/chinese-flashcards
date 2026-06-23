@@ -5,7 +5,21 @@ import { Character } from '@/lib/supabase'
 
 const CJK_RE = /[一-鿿㐀-䶿]/
 
-export default function HanziDetails({ char, onClose }: { char: Character; onClose: () => void }) {
+export default function HanziDetails({
+  char,
+  onClose,
+  onSave,
+  saving,
+  alreadyInCurrentLesson,
+  alreadyInOtherLessons,
+}: {
+  char: Character
+  onClose: () => void
+  onSave?: () => void
+  saving?: boolean
+  alreadyInCurrentLesson?: boolean
+  alreadyInOtherLessons?: string[]
+}) {
   const strokeRef = useRef<HTMLDivElement>(null)
   const writersRef = useRef<any[]>([])
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -200,6 +214,36 @@ export default function HanziDetails({ char, onClose }: { char: Character; onClo
             }}
           />
         </div>
+
+        {/* Save section (Add tab only) */}
+        {onSave && (
+          <div className="space-y-2 pt-1">
+            {alreadyInCurrentLesson && (
+              <div style={{ background: '#FFF0F0', border: '2px solid var(--duo-red)', borderRadius: '12px', padding: '0.65rem 0.9rem' }}>
+                <p className="text-sm font-bold" style={{ color: 'var(--duo-red)' }}>
+                  ⚠️ "{char.hanzi}" is already in this lesson.
+                </p>
+              </div>
+            )}
+            {!alreadyInCurrentLesson && alreadyInOtherLessons && alreadyInOtherLessons.length > 0 && (
+              <div style={{ background: '#FFFBEB', border: '2px solid #F59E0B', borderRadius: '12px', padding: '0.65rem 0.9rem' }}>
+                <p className="text-sm font-bold" style={{ color: '#92400E' }}>
+                  ℹ️ "{char.hanzi}" already exists in: {alreadyInOtherLessons.join(', ')}.
+                </p>
+                <p className="text-xs font-semibold mt-0.5" style={{ color: '#B45309' }}>
+                  You can still add it to the selected lesson.
+                </p>
+              </div>
+            )}
+            <button
+              onClick={onSave}
+              disabled={saving || alreadyInCurrentLesson}
+              className="btn-duo-green"
+            >
+              {saving ? 'Saving…' : '💾 Save to Library'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

@@ -1,7 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase, Lesson } from '@/lib/supabase'
+import { supabase, Lesson, Character } from '@/lib/supabase'
+import HanziDetails from './HanziDetails'
+
+const CJK_RE = /[一-鿿㐀-䶿]/
 
 type LookupResult = {
   hanzi: string
@@ -23,6 +26,7 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
   const [existingIn, setExistingIn] = useState<{ lesson_id: string; lessonName: string }[]>([])
+  const [showDetails, setShowDetails] = useState(false)
 
   useEffect(() => {
     fetchLessons()
@@ -60,19 +64,33 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
   }
 
   async function handleLookup() {
-    if (!input.trim()) return
+    const trimmed = input.trim()
+    if (!trimmed) return
+
+    const cjkChars = [...trimmed].filter(c => CJK_RE.test(c))
+    if (cjkChars.length === 0) {
+      setError('Please enter Chinese characters (汉字) only.')
+      return
+    }
+    if (cjkChars.length > 5) {
+      setError('You can look up a maximum of 5 characters at once.')
+      return
+    }
+
     setLoading(true)
     setError('')
     setResult(null)
     setSuccessMsg('')
     setExistingIn([])
+    setShowDetails(false)
     try {
-      const res = await fetch(`/api/lookup?hanzi=${encodeURIComponent(input.trim())}`)
+      const res = await fetch(`/api/lookup?hanzi=${encodeURIComponent(trimmed)}`)
       const data = await res.json()
       if (data.error) {
         setError(data.error)
       } else {
         setResult(data)
+        setShowDetails(true)
         const { data: existing } = await supabase
           .from('characters')
           .select('lesson_id, lessons(name)')
@@ -114,11 +132,16 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
       setInput('')
       setResult(null)
       setExistingIn([])
+      setShowDetails(false)
       onSaved()
     }
   }
 
   const selectedLesson = lessons.find(l => l.id === selectedLessonId)?.name
+  const alreadyInCurrentLesson = existingIn.some(e => e.lesson_id === selectedLessonId)
+  const alreadyInOtherLessons = existingIn
+    .filter(e => e.lesson_id !== selectedLessonId)
+    .map(e => e.lessonName)
 
   return (
     <div className="max-w-md mx-auto px-4 py-6 space-y-5">
@@ -274,59 +297,51 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
         </div>
       )}
 
-      {result && (
-        <div className="duo-card p-5 space-y-4">
-          <div className="text-center py-2">
-            <p className="font-bold" style={{ fontSize: '5rem', color: 'var(--duo-text)', lineHeight: 1 }}>{result.hanzi}</p>
+      {result && !showDetails && (
+        <div className="duo-card p-4 flex items-center gap-3">
+          <p style={{ fontSize: '2.5rem', fontWeight: 700, color: 'var(--duo-text)', lineHeight: 1 }}>{result.hanzi}</p>
+          <div className="flex-1 min-w-0">
+            <p className="font-black" style={{ color: 'var(--duo-blue)' }}>{result.pinyin}</p>
+            <p className="text-sm font-semibold truncate" style={{ color: 'var(--duo-text)' }}>{result.english}</p>
           </div>
-          <div className="space-y-2">
-            {[
-              { label: 'Pinyin', value: result.pinyin, color: 'var(--duo-blue)' },
-              { label: 'English', value: result.english, color: 'var(--duo-text)' },
-              { label: 'Indonesian', value: result.indonesian, color: 'var(--duo-text-light)' },
-            ].map(row => (
-              <div key={row.label} className="flex items-center gap-3" style={{ borderBottom: '2px solid var(--duo-border)', paddingBottom: '0.5rem' }}>
-                <span className="text-xs font-black w-24 shrink-0 uppercase tracking-wider" style={{ color: 'var(--duo-text-light)' }}>{row.label}</span>
-                <span className="font-bold text-sm" style={{ color: row.color }}>{row.value}</span>
-              </div>
-            ))}
-          </div>
-          {existingIn.length > 0 && (() => {
-            const alreadyHere = existingIn.some(e => e.lesson_id === selectedLessonId)
-            const otherLessons = existingIn
-              .filter(e => e.lesson_id !== selectedLessonId)
-              .map(e => e.lessonName)
-            if (alreadyHere) {
-              return (
-                <div style={{ background: '#FFF0F0', border: '2px solid var(--duo-red)', borderRadius: '12px', padding: '0.65rem 0.9rem' }}>
-                  <p className="text-sm font-bold" style={{ color: 'var(--duo-red)' }}>
-                    ⚠️ "{result.hanzi}" is already in this lesson.
-                  </p>
-                </div>
-              )
-            }
-            if (otherLessons.length > 0) {
-              return (
-                <div style={{ background: '#FFFBEB', border: '2px solid #F59E0B', borderRadius: '12px', padding: '0.65rem 0.9rem' }}>
-                  <p className="text-sm font-bold" style={{ color: '#92400E' }}>
-                    ℹ️ "{result.hanzi}" is already in: {otherLessons.join(', ')}.
-                  </p>
-                  <p className="text-xs font-semibold mt-1" style={{ color: '#B45309' }}>
-                    You can still add it to the selected lesson.
-                  </p>
-                </div>
-              )
-            }
-            return null
-          })()}
           <button
-            onClick={handleSave}
-            disabled={saving || existingIn.some(e => e.lesson_id === selectedLessonId)}
-            className="btn-duo-green"
+            onClick={() => setShowDetails(true)}
+            style={{
+              background: 'var(--duo-bg)',
+              border: '2px solid var(--duo-border)',
+              borderBottom: '3px solid var(--duo-border)',
+              borderRadius: '12px',
+              padding: '0.45rem 0.8rem',
+              fontFamily: 'inherit',
+              fontWeight: 800,
+              fontSize: '0.8rem',
+              color: 'var(--duo-text-light)',
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
           >
-            {saving ? 'Saving…' : '💾 Save to Library'}
+            Details →
           </button>
         </div>
+      )}
+
+      {showDetails && result && (
+        <HanziDetails
+          char={{
+            id: '',
+            hanzi: result.hanzi,
+            pinyin: result.pinyin,
+            english: result.english,
+            indonesian: result.indonesian,
+            lesson_id: '',
+            created_at: '',
+          } as Character}
+          onClose={() => setShowDetails(false)}
+          onSave={handleSave}
+          saving={saving}
+          alreadyInCurrentLesson={alreadyInCurrentLesson}
+          alreadyInOtherLessons={alreadyInOtherLessons}
+        />
       )}
     </div>
   )
