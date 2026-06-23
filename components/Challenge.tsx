@@ -6,7 +6,7 @@ import { supabase, Character } from '@/lib/supabase'
 type Mode = 'en-zh' | 'zh-en'
 type Phase = 'select' | 'quiz' | 'complete'
 type Option = { id: string; hanzi: string; pinyin: string; english: string }
-type Question = { prompt: string; options: Option[]; correctIndex: number }
+type Question = { prompt: string; promptPinyin?: string; options: Option[]; correctIndex: number }
 
 function buildQuestions(chars: Character[], mode: Mode): Question[] {
   if (chars.length < 4) return []
@@ -26,6 +26,7 @@ function buildQuestions(chars: Character[], mode: Mode): Question[] {
     const opts = [target, ...d.slice(0, 3)].sort(() => Math.random() - 0.5)
     return {
       prompt: mode === 'en-zh' ? target.english : target.hanzi,
+      promptPinyin: mode === 'zh-en' ? target.pinyin : undefined,
       options: opts.map(c => ({ id: c.id, hanzi: c.hanzi, pinyin: c.pinyin, english: c.english })),
       correctIndex: opts.findIndex(o => o.id === target.id),
     }
@@ -143,45 +144,65 @@ export default function Challenge({ refreshKey }: { refreshKey: number }) {
           {([
             {
               m: 'en-zh' as Mode,
-              flag: '🇺🇸',
+              badge: 'EN',
+              badgeColor: '#1CB0F6',
               title: 'English → Chinese',
-              desc: 'See an English word, pick the right Hanzi',
+              desc: 'See English, pick the right Hanzi',
             },
             {
               m: 'zh-en' as Mode,
-              flag: '🀄',
+              badge: '汉',
+              badgeColor: '#58CC02',
               title: 'Chinese → English',
-              desc: 'See a Hanzi character, pick the right meaning',
+              desc: 'See Hanzi, pick the right meaning',
             },
           ] as const).map(opt => (
             <button
               key={opt.m}
               onClick={() => startQuiz(opt.m)}
-              className="duo-card"
               style={{
                 width: '100%',
-                padding: '1.1rem 1.25rem',
+                height: '80px',
+                padding: '0 1.25rem',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '1rem',
                 cursor: 'pointer',
                 textAlign: 'left',
+                background: 'white',
                 border: '2.5px solid var(--duo-border)',
                 borderBottom: '4px solid var(--duo-border)',
                 borderRadius: '20px',
-                background: 'white',
+                boxShadow: '0 2px 0 var(--duo-border)',
+                fontFamily: 'inherit',
                 transition: 'transform 0.08s, border-bottom 0.08s',
+                flexShrink: 0,
               }}
-              onMouseDown={e => (e.currentTarget.style.transform = 'translateY(3px)')}
-              onMouseUp={e => (e.currentTarget.style.transform = '')}
-              onMouseLeave={e => (e.currentTarget.style.transform = '')}
+              onMouseDown={e => { e.currentTarget.style.transform = 'translateY(3px)'; e.currentTarget.style.borderBottomWidth = '1px' }}
+              onMouseUp={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.borderBottomWidth = '4px' }}
+              onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.borderBottomWidth = '4px' }}
             >
-              <span style={{ fontSize: '2.5rem', lineHeight: 1, flexShrink: 0 }}>{opt.flag}</span>
-              <div className="flex-1">
-                <p className="font-black text-lg" style={{ color: 'var(--duo-text)' }}>{opt.title}</p>
-                <p className="text-sm font-semibold" style={{ color: 'var(--duo-text-light)' }}>{opt.desc}</p>
+              <div style={{
+                width: '44px',
+                height: '44px',
+                borderRadius: '12px',
+                background: opt.badgeColor,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                color: 'white',
+                fontWeight: 900,
+                fontSize: opt.m === 'zh-en' ? '1.4rem' : '0.9rem',
+                letterSpacing: opt.m === 'en-zh' ? '-0.5px' : '0',
+              }}>
+                {opt.badge}
               </div>
-              <span style={{ color: 'var(--duo-text-light)', fontSize: '1.2rem' }}>›</span>
+              <div className="flex-1 min-w-0">
+                <p className="font-black" style={{ fontSize: '1rem', color: 'var(--duo-text)', whiteSpace: 'nowrap' }}>{opt.title}</p>
+                <p className="font-semibold" style={{ fontSize: '0.8rem', color: 'var(--duo-text-light)', whiteSpace: 'nowrap' }}>{opt.desc}</p>
+              </div>
+              <span style={{ color: 'var(--duo-text-light)', fontSize: '1.2rem', flexShrink: 0 }}>›</span>
             </button>
           ))}
         </div>
@@ -290,7 +311,14 @@ export default function Challenge({ refreshKey }: { refreshKey: number }) {
         {mode === 'en-zh' ? (
           <p className="text-3xl font-black" style={{ color: 'var(--duo-text)' }}>{q.prompt}</p>
         ) : (
-          <p style={{ fontSize: '4.5rem', fontWeight: 700, color: 'var(--duo-text)', lineHeight: 1.1 }}>{q.prompt}</p>
+          <>
+            {q.promptPinyin && (
+              <p className="font-bold mb-1" style={{ fontSize: '1.1rem', color: 'var(--duo-blue)' }}>
+                {q.promptPinyin}
+              </p>
+            )}
+            <p style={{ fontSize: '4.5rem', fontWeight: 700, color: 'var(--duo-text)', lineHeight: 1.1 }}>{q.prompt}</p>
+          </>
         )}
       </div>
 
