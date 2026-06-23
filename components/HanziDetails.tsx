@@ -3,20 +3,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { Character } from '@/lib/supabase'
 
-type Sentence = {
-  chinese: string
-  pinyin: string
-  english: string
-  indonesian: string
-}
-
 const CJK_RE = /[一-鿿㐀-䶿]/
 
 export default function HanziDetails({ char, onClose }: { char: Character; onClose: () => void }) {
   const strokeRef = useRef<HTMLDivElement>(null)
   const writersRef = useRef<any[]>([])
-  const [sentences, setSentences] = useState<Sentence[] | null>(null)
-  const [sentenceState, setSentenceState] = useState<'loading' | 'ok' | 'no_key' | 'error'>('loading')
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [playing, setPlaying] = useState(false)
 
   // Lock body scroll while open
   useEffect(() => {
@@ -24,7 +17,7 @@ export default function HanziDetails({ char, onClose }: { char: Character; onClo
     return () => { document.body.style.overflow = '' }
   }, [])
 
-  // Stroke order
+  // Stroke order animation
   useEffect(() => {
     if (!strokeRef.current) return
     strokeRef.current.innerHTML = ''
@@ -61,25 +54,27 @@ export default function HanziDetails({ char, onClose }: { char: Character; onClo
     })
   }, [char.hanzi])
 
-  // Sample sentences
+  // Stop audio when sheet closes
   useEffect(() => {
-    setSentenceState('loading')
-    setSentences(null)
-    const params = new URLSearchParams({
-      hanzi: char.hanzi,
-      english: char.english,
-      pinyin: char.pinyin,
-    })
-    fetch(`/api/sentences?${params}`)
-      .then(r => r.json())
-      .then(data => {
-        if (data.error === 'no_key') { setSentenceState('no_key'); return }
-        if (data.error) { setSentenceState('error'); return }
-        setSentences(data.sentences || null)
-        setSentenceState('ok')
-      })
-      .catch(() => setSentenceState('error'))
-  }, [char.hanzi, char.english, char.pinyin])
+    return () => {
+      audioRef.current?.pause()
+    }
+  }, [])
+
+  async function handlePlay() {
+    if (playing) return
+    audioRef.current?.pause()
+    setPlaying(true)
+    const audio = new Audio(`/api/audio?hanzi=${encodeURIComponent(char.hanzi)}`)
+    audioRef.current = audio
+    audio.onended = () => setPlaying(false)
+    audio.onerror = () => setPlaying(false)
+    try {
+      await audio.play()
+    } catch {
+      setPlaying(false)
+    }
+  }
 
   function handleReplay() {
     writersRef.current.forEach(w => w.animateCharacter())
@@ -146,10 +141,33 @@ export default function HanziDetails({ char, onClose }: { char: Character; onClo
             <p className="font-bold" style={{ color: 'var(--duo-text)' }}>{char.english}</p>
             <p className="text-sm font-semibold mt-0.5" style={{ color: 'var(--duo-text-light)' }}>{char.indonesian}</p>
           </div>
+
+          {/* Audio button */}
+          <div style={{ paddingTop: '0.5rem' }}>
+            <button
+              onClick={handlePlay}
+              disabled={playing}
+              style={{
+                background: playing ? '#F0FFF0' : 'white',
+                border: `2px solid ${playing ? 'var(--duo-green)' : 'var(--duo-border)'}`,
+                borderBottom: `4px solid ${playing ? 'var(--duo-green-dark)' : 'var(--duo-border)'}`,
+                borderRadius: '14px',
+                padding: '0.55rem 1.5rem',
+                fontFamily: 'inherit',
+                fontWeight: 800,
+                fontSize: '1rem',
+                color: playing ? 'var(--duo-green)' : 'var(--duo-text-light)',
+                cursor: playing ? 'default' : 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              {playing ? '🔊 Playing…' : '🔊 Listen'}
+            </button>
+          </div>
         </div>
 
         {/* Stroke order */}
-        <div className="duo-card p-4 mb-4">
+        <div className="duo-card p-4">
           <div className="flex items-center justify-between mb-3">
             <p className="font-black text-sm uppercase tracking-wider" style={{ color: 'var(--duo-text-light)' }}>
               ✏️ Stroke Order
@@ -181,52 +199,6 @@ export default function HanziDetails({ char, onClose }: { char: Character; onClo
               minHeight: '130px',
             }}
           />
-        </div>
-
-        {/* Sample sentences */}
-        <div className="duo-card p-4">
-          <p className="font-black text-sm uppercase tracking-wider mb-3" style={{ color: 'var(--duo-text-light)' }}>
-            💬 Sample Sentences
-          </p>
-
-          {sentenceState === 'loading' && (
-            <div className="text-center py-4">
-              <p className="text-sm font-bold" style={{ color: 'var(--duo-text-light)' }}>Generating sentences…</p>
-            </div>
-          )}
-
-          {sentenceState === 'no_key' && (
-            <div style={{ background: '#FFF8E1', border: '2px solid #FFC800', borderRadius: '12px', padding: '0.75rem 1rem' }}>
-              <p className="text-sm font-bold" style={{ color: '#B8860B' }}>
-                Add <code>ANTHROPIC_API_KEY</code> to your environment variables to enable sample sentences.
-              </p>
-            </div>
-          )}
-
-          {sentenceState === 'error' && (
-            <p className="text-sm font-semibold text-center" style={{ color: 'var(--duo-text-light)' }}>
-              Could not generate sentences. Try again later.
-            </p>
-          )}
-
-          {sentenceState === 'ok' && sentences && (
-            <div className="space-y-4">
-              {sentences.map((s, i) => (
-                <div
-                  key={i}
-                  style={{
-                    borderBottom: i < sentences.length - 1 ? '2px solid var(--duo-border)' : 'none',
-                    paddingBottom: i < sentences.length - 1 ? '1rem' : 0,
-                  }}
-                >
-                  <p className="font-black text-lg" style={{ color: 'var(--duo-text)' }}>{s.chinese}</p>
-                  <p className="text-sm font-bold mt-0.5" style={{ color: 'var(--duo-blue)' }}>{s.pinyin}</p>
-                  <p className="text-sm font-semibold mt-0.5" style={{ color: 'var(--duo-text)' }}>{s.english}</p>
-                  <p className="text-sm font-semibold mt-0.5" style={{ color: 'var(--duo-text-light)' }}>{s.indonesian}</p>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </div>
     </div>
