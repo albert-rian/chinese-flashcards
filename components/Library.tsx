@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase, Lesson, Character } from '@/lib/supabase'
+import HanziDetails from './HanziDetails'
 
 type LessonWithChars = Lesson & { characters: Character[] }
 
@@ -16,6 +17,7 @@ export default function Library({ refreshKey }: { refreshKey: number }) {
   const [loading, setLoading] = useState(true)
   const [confirm, setConfirm] = useState<ConfirmState>(null)
   const [deleting, setDeleting] = useState(false)
+  const [detailChar, setDetailChar] = useState<Character | null>(null)
 
   useEffect(() => {
     fetchAll()
@@ -181,9 +183,11 @@ export default function Library({ refreshKey }: { refreshKey: number }) {
                   {group.characters.map((char, i) => (
                     <tr
                       key={char.id}
+                      onClick={() => setDetailChar(char)}
                       style={{
                         background: i % 2 === 0 ? 'white' : '#F8FBFF',
                         borderBottom: '1.5px solid var(--duo-border)',
+                        cursor: 'pointer',
                       }}
                     >
                       <td className="px-3 py-2 text-2xl font-black" style={{ color: 'var(--duo-text)', whiteSpace: 'nowrap', width: '1%' }}>{char.hanzi}</td>
@@ -192,7 +196,7 @@ export default function Library({ refreshKey }: { refreshKey: number }) {
                       <td className="px-3 py-2 text-sm font-semibold" style={{ color: 'var(--duo-text-light)' }}>{char.indonesian}</td>
                       <td className="px-2 py-2 text-right">
                         <button
-                          onClick={() => setConfirm({ type: 'char', char })}
+                          onClick={e => { e.stopPropagation(); setConfirm({ type: 'char', char }) }}
                           title="Delete this character"
                           style={{
                             background: 'none',
@@ -224,6 +228,11 @@ export default function Library({ refreshKey }: { refreshKey: number }) {
           </div>
         )
       })}
+
+      {/* ── Hanzi Details Sheet ── */}
+      {detailChar && (
+        <HanziDetails char={detailChar} onClose={() => setDetailChar(null)} />
+      )}
 
       {/* ── Confirmation Modal ── */}
       {confirm && (
