@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { supabase, Lesson, Character } from '@/lib/supabase'
+import { DEMO_MODE, DEMO_MESSAGE } from '@/lib/demoMode'
 import HanziDetails from './HanziDetails'
+import DemoToast from './DemoToast'
 
 type LessonWithChars = Lesson & { characters: Character[] }
 
@@ -18,6 +20,7 @@ export default function Library({ refreshKey }: { refreshKey: number }) {
   const [confirm, setConfirm] = useState<ConfirmState>(null)
   const [deleting, setDeleting] = useState(false)
   const [detailChar, setDetailChar] = useState<Character | null>(null)
+  const [showDemoToast, setShowDemoToast] = useState(false)
 
   useEffect(() => {
     fetchAll()
@@ -55,6 +58,7 @@ export default function Library({ refreshKey }: { refreshKey: number }) {
   }
 
   async function openLessonDelete(lesson: Lesson) {
+    if (DEMO_MODE) { setShowDemoToast(true); return }
     const { count } = await supabase
       .from('characters')
       .select('*', { count: 'exact', head: true })
@@ -196,7 +200,11 @@ export default function Library({ refreshKey }: { refreshKey: number }) {
                       <td className="px-3 py-2 text-sm font-semibold" style={{ color: 'var(--duo-text-light)' }}>{char.indonesian}</td>
                       <td className="px-2 py-2 text-right">
                         <button
-                          onClick={e => { e.stopPropagation(); setConfirm({ type: 'char', char }) }}
+                          onClick={e => {
+                            e.stopPropagation()
+                            if (DEMO_MODE) { setShowDemoToast(true); return }
+                            setConfirm({ type: 'char', char })
+                          }}
                           title="Delete this character"
                           style={{
                             background: 'none',
@@ -297,6 +305,10 @@ export default function Library({ refreshKey }: { refreshKey: number }) {
             </div>
           </div>
         </div>
+      )}
+
+      {showDemoToast && (
+        <DemoToast message={DEMO_MESSAGE} onDone={() => setShowDemoToast(false)} />
       )}
     </div>
   )

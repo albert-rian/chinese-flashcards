@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { supabase, Lesson, Character } from '@/lib/supabase'
+import { DEMO_MODE, DEMO_MESSAGE } from '@/lib/demoMode'
 import HanziDetails from './HanziDetails'
+import DemoToast from './DemoToast'
 
 const CJK_RE = /[一-鿿㐀-䶿]/
 
@@ -26,6 +28,7 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
   const [existingIn, setExistingIn] = useState<{ lesson_id: string; lessonName: string }[]>([])
+  const [showDemoToast, setShowDemoToast] = useState(false)
 
   useEffect(() => {
     fetchLessons()
@@ -47,6 +50,7 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
 
   async function handleCreateLesson() {
     if (!newLessonName.trim()) return
+    if (DEMO_MODE) { setShowDemoToast(true); return }
     setCreatingLesson(true)
     const { data, error: err } = await supabase
       .from('lessons')
@@ -108,6 +112,7 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
 
   async function handleSave() {
     if (!result || !selectedLessonId) return
+    if (DEMO_MODE) { setShowDemoToast(true); return }
     if (existingIn.some(e => e.lesson_id === selectedLessonId)) {
       setError(`"${result.hanzi}" is already in this lesson.`)
       return
@@ -310,6 +315,10 @@ export default function AddCharacter({ onSaved }: { onSaved: () => void }) {
           alreadyInCurrentLesson={alreadyInCurrentLesson}
           alreadyInOtherLessons={alreadyInOtherLessons}
         />
+      )}
+
+      {showDemoToast && (
+        <DemoToast message={DEMO_MESSAGE} onDone={() => setShowDemoToast(false)} />
       )}
     </div>
   )

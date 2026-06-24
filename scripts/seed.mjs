@@ -1,7 +1,10 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = 'https://ydzsjqilnkcvbcnkgcrh.supabase.co'
-const supabaseKey = 'sb_publishable_2zrRyGhtStU3INgrDP9BEA_3URWnRBl'
+// Pass credentials as env vars so this script can target any Supabase project:
+//   SUPABASE_URL=https://xxxx.supabase.co SUPABASE_KEY=sb_xxx node scripts/seed.mjs
+// Falls back to the production project's credentials if not set.
+const supabaseUrl = process.env.SUPABASE_URL || 'https://ydzsjqilnkcvbcnkgcrh.supabase.co'
+const supabaseKey = process.env.SUPABASE_KEY || 'sb_publishable_2zrRyGhtStU3INgrDP9BEA_3URWnRBl'
 const supabase = createClient(supabaseUrl, supabaseKey)
 
 const lessonNames = [
