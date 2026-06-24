@@ -1,12 +1,44 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { supabase, Character } from '@/lib/supabase'
+import { supabase, Character, Lesson } from '@/lib/supabase'
 
 type Mode = 'en-zh' | 'zh-en'
 type Phase = 'select' | 'quiz' | 'complete'
+type PinyinMode = 'always' | 'after-answer'
 type Option = { id: string; hanzi: string; pinyin: string; english: string }
 type Question = { prompt: string; promptPinyin?: string; options: Option[]; correctIndex: number }
+
+const SETTINGS_KEY = 'challenge-settings'
+
+function sortLessons(list: Lesson[]) {
+  return [...list].sort((a, b) => {
+    const na = parseFloat(a.name.match(/[\d.]+/)?.[0] ?? '999')
+    const nb = parseFloat(b.name.match(/[\d.]+/)?.[0] ?? '999')
+    return na !== nb ? na - nb : a.name.localeCompare(b.name)
+  })
+}
+
+function loadSavedSettings(): { lessonIds: string[] | null; pinyinMode: PinyinMode } {
+  if (typeof window === 'undefined') return { lessonIds: null, pinyinMode: 'always' }
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY)
+    if (!raw) return { lessonIds: null, pinyinMode: 'always' }
+    const parsed = JSON.parse(raw)
+    return {
+      lessonIds: Array.isArray(parsed.lessonIds) ? parsed.lessonIds : null,
+      pinyinMode: parsed.pinyinMode === 'after-answer' ? 'after-answer' : 'always',
+    }
+  } catch {
+    return { lessonIds: null, pinyinMode: 'always' }
+  }
+}
+
+function persistSettings(lessonIds: string[], pinyinMode: PinyinMode) {
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify({ lessonIds, pinyinMode }))
+  } catch {}
+}
 
 function buildQuestions(chars: Character[], mode: Mode): Question[] {
   if (chars.length < 4) return []
@@ -68,6 +100,7 @@ function Confetti() {
 }
 
 export default function Challenge({ refreshKey }: { refreshKey: number }) {
+  const [lessons, setLessons] = useState<Lesson[]>([])
   const [allChars, setAllChars] = useState<Character[]>([])
   const [loading, setLoading] = useState(true)
   const [phase, setPhase] = useState<Phase>('select')
@@ -78,21 +111,72 @@ export default function Challenge({ refreshKey }: { refreshKey: number }) {
   const [checked, setChecked] = useState(false)
   const [score, setScore] = useState(0)
 
+  const [selectedLessonIds, setSelectedLessonIds] = useState<Set<string>>(new Set())
+  const [pinyinMode, setPinyinMode] = useState<PinyinMode>('always')
+  const [showSettings, setShowSettings] = useState(false)
+  const [draftLessonIds, setDraftLessonIds] = useState<Set<string>>(new Set())
+  const [draftPinyinMode, setDraftPinyinMode] = useState<PinyinMode>('always')
+  const [lessonWarning, setLessonWarning] = useState(false)
+
   useEffect(() => {
-    supabase.from('characters').select('*').then(({ data }) => {
-      setAllChars(data || [])
+    async function fetchData() {
+      setLoading(true)
+      const [{ data: lessonsData }, { data: charsData }] = await Promise.all([
+        supabase.from('lessons').select('*'),
+        supabase.from('characters').select('*'),
+      ])
+      const ls = sortLessons(lessonsData || [])
+      setLessons(ls)
+      setAllChars(charsData || [])
+
+      const allIds = ls.map(l => l.id)
+      const saved = loadSavedSettings()
+      const validSaved = (saved.lessonIds || []).filter(id => allIds.includes(id))
+      setSelectedLessonIds(new Set(validSaved.length > 0 ? validSaved : allIds))
+      setPinyinMode(saved.pinyinMode)
+
       setLoading(false)
-    })
+    }
+    fetchData()
   }, [refreshKey])
+
+  const filteredChars = allChars.filter(c => selectedLessonIds.has(c.lesson_id))
 
   function startQuiz(m: Mode) {
     setMode(m)
-    setQuestions(buildQuestions(allChars, m))
+    setQuestions(buildQuestions(filteredChars, m))
     setCurrentIndex(0)
     setSelected(null)
     setChecked(false)
     setScore(0)
     setPhase('quiz')
+  }
+
+  function openSettings() {
+    setDraftLessonIds(new Set(selectedLessonIds))
+    setDraftPinyinMode(pinyinMode)
+    setLessonWarning(false)
+    setShowSettings(true)
+  }
+
+  function toggleDraftLesson(id: string) {
+    setLessonWarning(false)
+    setDraftLessonIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  function handleSaveSettings() {
+    if (draftLessonIds.size === 0) {
+      setLessonWarning(true)
+      return
+    }
+    setSelectedLessonIds(new Set(draftLessonIds))
+    setPinyinMode(draftPinyinMode)
+    persistSettings([...draftLessonIds], draftPinyinMode)
+    setShowSettings(false)
   }
 
   function handleSelect(i: number) {
@@ -139,15 +223,46 @@ export default function Challenge({ refreshKey }: { refreshKey: number }) {
 
   // ── Selection screen ──
   if (phase === 'select') {
+    const notEnough = filteredChars.length < 4
     return (
       <div className="max-w-md mx-auto px-4 py-8 space-y-6">
-        <div className="text-center space-y-2">
+        <div className="text-center space-y-2 relative">
+          <button
+            onClick={openSettings}
+            title="Challenge settings"
+            style={{
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              background: 'white',
+              border: '2px solid var(--duo-border)',
+              borderBottom: '3px solid var(--duo-border)',
+              borderRadius: '12px',
+              width: '40px',
+              height: '40px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.1rem',
+              cursor: 'pointer',
+            }}
+          >
+            ⚙️
+          </button>
           <p style={{ fontSize: '3.5rem', lineHeight: 1 }}>🎯</p>
           <h1 className="text-3xl font-black" style={{ color: 'var(--duo-text)' }}>Challenge</h1>
           <p className="font-semibold" style={{ color: 'var(--duo-text-light)' }}>
-            {allChars.length} words · 10 questions
+            {filteredChars.length} words · 10 questions
           </p>
         </div>
+
+        {notEnough && (
+          <div style={{ background: '#FFF0F0', border: '2px solid var(--duo-red)', borderRadius: '16px', padding: '0.75rem 1rem' }}>
+            <p className="text-sm font-bold" style={{ color: 'var(--duo-red)' }}>
+              ⚠️ Not enough words in the selected lessons. Choose more lessons in ⚙️ Settings.
+            </p>
+          </div>
+        )}
 
         <div className="space-y-3">
           {([
@@ -168,7 +283,8 @@ export default function Challenge({ refreshKey }: { refreshKey: number }) {
           ] as const).map(opt => (
             <button
               key={opt.m}
-              onClick={() => startQuiz(opt.m)}
+              onClick={() => !notEnough && startQuiz(opt.m)}
+              disabled={notEnough}
               style={{
                 width: '100%',
                 height: '80px',
@@ -176,7 +292,8 @@ export default function Challenge({ refreshKey }: { refreshKey: number }) {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '1rem',
-                cursor: 'pointer',
+                cursor: notEnough ? 'not-allowed' : 'pointer',
+                opacity: notEnough ? 0.5 : 1,
                 textAlign: 'left',
                 background: 'white',
                 border: '2.5px solid var(--duo-border)',
@@ -215,6 +332,159 @@ export default function Challenge({ refreshKey }: { refreshKey: number }) {
             </button>
           ))}
         </div>
+
+        {showSettings && (
+          <div
+            onClick={e => { if (e.target === e.currentTarget) setShowSettings(false) }}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.55)',
+              zIndex: 200,
+              display: 'flex',
+              alignItems: 'flex-end',
+              justifyContent: 'center',
+            }}
+          >
+            <div
+              style={{
+                background: 'var(--duo-bg)',
+                borderRadius: '24px 24px 0 0',
+                width: '100%',
+                maxWidth: '480px',
+                maxHeight: '85vh',
+                overflowY: 'auto',
+                padding: '1.25rem 1.25rem 2rem',
+                animation: 'slideUp 0.25s ease',
+              }}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-xs font-black uppercase tracking-widest" style={{ color: 'var(--duo-text-light)' }}>
+                  Challenge Settings
+                </span>
+                <button
+                  onClick={() => setShowSettings(false)}
+                  style={{
+                    background: 'white',
+                    border: '2.5px solid var(--duo-border)',
+                    borderBottom: '4px solid var(--duo-border)',
+                    borderRadius: '12px',
+                    padding: '0.3rem 0.8rem',
+                    fontFamily: 'inherit',
+                    fontWeight: 800,
+                    fontSize: '0.85rem',
+                    color: 'var(--duo-text-light)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  ✕ Close
+                </button>
+              </div>
+
+              {/* Lesson checklist */}
+              <div className="duo-card p-4 mb-4">
+                <p className="font-black text-sm uppercase tracking-wider mb-2" style={{ color: 'var(--duo-text-light)' }}>
+                  Lessons to include
+                </p>
+                <div className="space-y-0.5">
+                  {lessons.map(l => {
+                    const isChecked = draftLessonIds.has(l.id)
+                    return (
+                      <button
+                        key={l.id}
+                        onClick={() => toggleDraftLesson(l.id)}
+                        style={{
+                          width: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.75rem',
+                          padding: '0.55rem 0.25rem',
+                          background: 'none',
+                          border: 'none',
+                          borderBottom: '1.5px solid var(--duo-border)',
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          fontFamily: 'inherit',
+                        }}
+                      >
+                        <div style={{
+                          width: '22px',
+                          height: '22px',
+                          borderRadius: '6px',
+                          border: `2px solid ${isChecked ? 'var(--duo-green)' : 'var(--duo-border)'}`,
+                          background: isChecked ? 'var(--duo-green)' : 'white',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                        }}>
+                          {isChecked && <span style={{ color: 'white', fontSize: '0.75rem', fontWeight: 900 }}>✓</span>}
+                        </div>
+                        <span className="font-bold text-sm" style={{ color: 'var(--duo-text)' }}>{l.name}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+                {lessonWarning && (
+                  <p className="text-sm font-bold" style={{ color: 'var(--duo-red)', paddingTop: '0.6rem' }}>
+                    ⚠️ Select at least one lesson.
+                  </p>
+                )}
+              </div>
+
+              {/* Pinyin display mode */}
+              <div className="duo-card p-4 mb-4">
+                <p className="font-black text-sm uppercase tracking-wider mb-2" style={{ color: 'var(--duo-text-light)' }}>
+                  Pinyin display
+                </p>
+                <div className="space-y-0.5">
+                  {([
+                    { v: 'always' as PinyinMode, label: 'Always show pinyin above Hanzi' },
+                    { v: 'after-answer' as PinyinMode, label: 'Show pinyin only after answering' },
+                  ]).map(opt => {
+                    const active = draftPinyinMode === opt.v
+                    return (
+                      <button
+                        key={opt.v}
+                        onClick={() => setDraftPinyinMode(opt.v)}
+                        style={{
+                          width: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.75rem',
+                          padding: '0.55rem 0.25rem',
+                          background: 'none',
+                          border: 'none',
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          fontFamily: 'inherit',
+                        }}
+                      >
+                        <div style={{
+                          width: '22px',
+                          height: '22px',
+                          borderRadius: '50%',
+                          border: `2px solid ${active ? 'var(--duo-green)' : 'var(--duo-border)'}`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                        }}>
+                          {active && <div style={{ width: '11px', height: '11px', borderRadius: '50%', background: 'var(--duo-green)' }} />}
+                        </div>
+                        <span className="font-bold text-sm" style={{ color: 'var(--duo-text)' }}>{opt.label}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <button onClick={handleSaveSettings} className="btn-duo-green">
+                Save Settings
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
@@ -321,11 +591,9 @@ export default function Challenge({ refreshKey }: { refreshKey: number }) {
           <p className="text-3xl font-black" style={{ color: 'var(--duo-text)' }}>{q.prompt}</p>
         ) : (
           <>
-            {q.promptPinyin && (
-              <p className="font-bold mb-1" style={{ fontSize: '1.1rem', color: 'var(--duo-blue)' }}>
-                {q.promptPinyin}
-              </p>
-            )}
+            <p className="font-bold mb-1" style={{ fontSize: '1.1rem', color: 'var(--duo-blue)', minHeight: '1.4rem' }}>
+              {q.promptPinyin && (pinyinMode === 'always' || checked) ? q.promptPinyin : ' '}
+            </p>
             <p style={{ fontSize: '4.5rem', fontWeight: 700, color: 'var(--duo-text)', lineHeight: 1.1 }}>{q.prompt}</p>
           </>
         )}
@@ -382,7 +650,7 @@ export default function Challenge({ refreshKey }: { refreshKey: number }) {
               {mode === 'en-zh' ? (
                 <>
                   <span style={{ fontSize: '0.7rem', fontWeight: 700, color: pinyinColor, lineHeight: 1.3, display: 'block' }}>
-                    {opt.pinyin}
+                    {pinyinMode === 'always' || checked ? opt.pinyin : ' '}
                   </span>
                   <span style={{ fontSize: '2rem', fontWeight: 700, color: textColor, lineHeight: 1.1, display: 'block' }}>
                     {opt.hanzi}
